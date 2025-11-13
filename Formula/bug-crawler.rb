@@ -29,4 +29,3 @@ class BugCrawler < Formula
     assert_predicate bin/"bug-crawler", :exist?
   end
 end
-end
