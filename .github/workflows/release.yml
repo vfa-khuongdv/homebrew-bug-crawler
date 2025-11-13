@@ -85,53 +85,52 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -e
+          
+          # Extract SHA256 values from checksums
+          cd checksums
+          DARWIN_AMD64_SHA=$(grep "bug-crawler-darwin-amd64" checksums.txt | awk '{print $1}')
+          DARWIN_ARM64_SHA=$(grep "bug-crawler-darwin-arm64" checksums.txt | awk '{print $1}')
+          LINUX_AMD64_SHA=$(grep "bug-crawler-linux-amd64" checksums.txt | awk '{print $1}')
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          
+          echo "Extracted SHA256 values:"
+          echo "Darwin AMD64: $DARWIN_AMD64_SHA"
+          echo "Darwin ARM64: $DARWIN_ARM64_SHA"
+          echo "Linux AMD64: $LINUX_AMD64_SHA"
+          echo "Version: $VERSION"
+          
           # Clone the homebrew tap repo
-          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/vfa-khuongdv/homebrew-bug-crawler.git homebrew-tap
+          cd ..
+          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/vfa-khuongdv/homebrew-bug-crawler.git homebrew-tap
           cd homebrew-tap
           
           # Set up git user
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           
-          # Create update script
-          cat > update_formula.sh << 'EOF'
-          #!/bin/bash
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
-          
-          # Extract SHA256 values from checksums
-          cd ../checksums
-          DARWIN_AMD64_SHA=$(grep "bug-crawler-darwin-amd64" checksums.txt | awk '{print $1}')
-          DARWIN_ARM64_SHA=$(grep "bug-crawler-darwin-arm64" checksums.txt | awk '{print $1}')
-          LINUX_AMD64_SHA=$(grep "bug-crawler-linux-amd64" checksums.txt | awk '{print $1}')
-          
-          echo "Extracted SHA256 values:"
-          echo "Darwin AMD64: $DARWIN_AMD64_SHA"
-          echo "Darwin ARM64: $DARWIN_ARM64_SHA"
-          echo "Linux AMD64: $LINUX_AMD64_SHA"
-          
           # Update formula
-          cd ../homebrew-tap
-          cat > Formula/bug-crawler.rb << EOL
+          cat > Formula/bug-crawler.rb << 'EOL'
           class BugCrawler < Formula
             desc "GitHub PR Bug Analysis Tool - analyze and count bugs from pull requests"
             homepage "https://github.com/vfa-khuongdv/bug-crawler"
-            version "${VERSION#v}"
+            version "VERSION_PLACEHOLDER"
             license "MIT"
           
             on_macos do
               if Hardware::CPU.arm?
-                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/${VERSION}/bug-crawler-darwin-arm64"
-                sha256 "${DARWIN_ARM64_SHA}"
+                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_PLACEHOLDER/bug-crawler-darwin-arm64"
+                sha256 "DARWIN_ARM64_SHA_PLACEHOLDER"
               end
               if Hardware::CPU.intel?
-                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/${VERSION}/bug-crawler-darwin-amd64"
-                sha256 "${DARWIN_AMD64_SHA}"
+                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_PLACEHOLDER/bug-crawler-darwin-amd64"
+                sha256 "DARWIN_AMD64_SHA_PLACEHOLDER"
               end
             end
           
             on_linux do
-              url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/${VERSION}/bug-crawler-linux-amd64"
-              sha256 "${LINUX_AMD64_SHA}"
+              url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_PLACEHOLDER/bug-crawler-linux-amd64"
+              sha256 "LINUX_AMD64_SHA_PLACEHOLDER"
             end
           
             def install
@@ -144,11 +143,18 @@ jobs:
           end
           EOL
           
+          # Replace placeholders
+          sed -i "s|VERSION_PLACEHOLDER|${VERSION#v}|g" Formula/bug-crawler.rb
+          sed -i "s|DARWIN_ARM64_SHA_PLACEHOLDER|${DARWIN_ARM64_SHA}|g" Formula/bug-crawler.rb
+          sed -i "s|DARWIN_AMD64_SHA_PLACEHOLDER|${DARWIN_AMD64_SHA}|g" Formula/bug-crawler.rb
+          sed -i "s|LINUX_AMD64_SHA_PLACEHOLDER|${LINUX_AMD64_SHA}|g" Formula/bug-crawler.rb
+          sed -i "s|VERSION_PLACEHOLDER|${VERSION}|g" Formula/bug-crawler.rb
+          
+          # Verify changes
+          echo "Updated formula:"
+          cat Formula/bug-crawler.rb
+          
           # Commit and push
           git add Formula/bug-crawler.rb
           git commit -m "Update bug-crawler formula to ${VERSION}"
           git push
-          EOF
-          
-          chmod +x update_formula.sh
-          ./update_formula.sh
