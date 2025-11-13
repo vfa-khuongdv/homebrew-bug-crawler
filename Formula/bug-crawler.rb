@@ -5,14 +5,19 @@ class BugCrawler < Formula
   license "MIT"
 
   on_macos do
-    on_intel do
-      url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.0/bug-crawler-darwin-amd64"
-      sha256 "6faf1adfb17fffd8e0a0e65e29eb4889f8e9d0b4cf9c36966dc8986f859c14c8"
-    end
-    on_arm do
+    if Hardware::CPU.arm?
       url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.0/bug-crawler-darwin-arm64"
-      sha256 "4254b2340cb718b657493ca35544f152414108f80de40b4c45917a7d1d5b7b4c"
+      sha256 "3b0b99477393a59583b49ed179e9b508aef2c3bbef151f41b212b95a612c1b9c"
     end
+    if Hardware::CPU.intel?
+      url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.0/bug-crawler-darwin-amd64"
+      sha256 "d54fb62ab1ce92d3cf6b6f632324d460beed3f813c0447e2218d6fb07cad23d1"
+    end
+  end
+
+  on_linux do
+    url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.0/bug-crawler-linux-amd64"
+    sha256 "c41179dd6f47707980f5067fd69904a4f12c211a6f1f53509288cce1a3515eaf"
   end
 
   on_linux do
