@@ -10,50 +10,145 @@ permissions:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
         include:
-          - os: ubuntu-latest
-            goos: linux
+          - goos: darwin
             goarch: amd64
-          - os: macos-latest
-            goos: darwin
-            goarch: amd64
-          - os: macos-latest
-            goos: darwin
+          - goos: darwin
             goarch: arm64
+          - goos: linux
+            goarch: amd64
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.23'
 
-      - name: Build
+      - name: Get the version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
           go mod download
           go mod tidy
-          go build -o bug-crawler ./cmd/main.go
-          
-      - name: Prepare artifact
-        run: |
-          mkdir -p release
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            mv bug-crawler.exe release/bug-crawler-${{ matrix.goos }}-${{ matrix.goarch }}.exe
-          else
-            mv bug-crawler release/bug-crawler-${{ matrix.goos }}-${{ matrix.goarch }}
-          fi
+          go build -o bug-crawler-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/main.go
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: release/*
+          files: bug-crawler-${{ matrix.goos }}-${{ matrix.goarch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get the version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Download all release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p checksums
+          cd checksums
+          gh release download ${{ steps.get_version.outputs.VERSION }} --repo vfa-khuongdv/homebrew-bug-crawler --pattern "bug-crawler-*"
+          echo "Downloaded files:"
+          ls -la
+
+      - name: Generate checksums
+        run: |
+          cd checksums
+          sha256sum bug-crawler-* > checksums.txt
+          cat checksums.txt
+
+      - name: Update Homebrew formula
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Clone the homebrew tap repo
+          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/vfa-khuongdv/homebrew-bug-crawler.git homebrew-tap
+          cd homebrew-tap
+          
+          # Set up git user
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          # Create update script
+          cat > update_formula.sh << 'EOF'
+          #!/bin/bash
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          
+          # Extract SHA256 values from checksums
+          cd ../checksums
+          DARWIN_AMD64_SHA=$(grep "bug-crawler-darwin-amd64" checksums.txt | awk '{print $1}')
+          DARWIN_ARM64_SHA=$(grep "bug-crawler-darwin-arm64" checksums.txt | awk '{print $1}')
+          LINUX_AMD64_SHA=$(grep "bug-crawler-linux-amd64" checksums.txt | awk '{print $1}')
+          
+          echo "Extracted SHA256 values:"
+          echo "Darwin AMD64: $DARWIN_AMD64_SHA"
+          echo "Darwin ARM64: $DARWIN_ARM64_SHA"
+          echo "Linux AMD64: $LINUX_AMD64_SHA"
+          
+          # Update formula
+          cd ../homebrew-tap
+          cat > Formula/bug-crawler.rb << EOL
+          class BugCrawler < Formula
+            desc "GitHub PR Bug Analysis Tool - analyze and count bugs from pull requests"
+            homepage "https://github.com/vfa-khuongdv/bug-crawler"
+            version "${VERSION#v}"
+            license "MIT"
+          
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/${VERSION}/bug-crawler-darwin-arm64"
+                sha256 "${DARWIN_ARM64_SHA}"
+              end
+              if Hardware::CPU.intel?
+                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/${VERSION}/bug-crawler-darwin-amd64"
+                sha256 "${DARWIN_AMD64_SHA}"
+              end
+            end
+          
+            on_linux do
+              url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/${VERSION}/bug-crawler-linux-amd64"
+              sha256 "${LINUX_AMD64_SHA}"
+            end
+          
+            def install
+              bin.install Dir["bug-crawler-*"].first => "bug-crawler"
+            end
+          
+            test do
+              assert_predicate bin/"bug-crawler", :exist?
+            end
+          end
+          EOL
+          
+          # Commit and push
+          git add Formula/bug-crawler.rb
+          git commit -m "Update bug-crawler formula to ${VERSION}"
+          git push
+          EOF
+          
+          chmod +x update_formula.sh
+          ./update_formula.sh
