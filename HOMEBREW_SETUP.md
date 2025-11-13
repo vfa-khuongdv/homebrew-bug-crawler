@@ -9,7 +9,7 @@ git push origin v1.0.0
 ```
 
 ### Bước 1.2: Tạo GitHub Releases
-1. Vào https://github.com/yourusername/homebrew-bug-crawler/releases
+1. Vào https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases
 2. Tạo release mới từ tag v1.0.0
 3. Tên release: `Bug Crawler v1.0.0`
 4. Mô tả: Thêm changelog
@@ -150,7 +150,7 @@ Workflow này sẽ tự động:
 3. **Tạo Homebrew Tap**
    ```bash
    # Tạo repo mới: homebrew-bug-crawler
-   git clone https://github.com/YOUR_USERNAME/homebrew-bug-crawler.git
+   git clone https://github.com/vfa-khuongdv/homebrew-bug-crawler.git
    cd homebrew-bug-crawler
    mkdir -p Formula
    # Copy Formula/bug-crawler.rb
