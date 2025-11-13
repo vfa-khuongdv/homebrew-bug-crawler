@@ -16,6 +16,10 @@
 - ✅ Thống kê chi tiết và tóm tắt
 - ✅ Export kết quả dạng CSV
 
+## Giới thiệu nhanh cho SPL Lab
+
+**Bug Crawler** là công cụ tự động phân tích bug từ GitHub PR, giúp team **giảm 80% thời gian scan bug sau mỗi sprint**. Chỉ cần nhập GitHub token và chọn repository, tool sẽ tự động phát hiện và thống kê tất cả bug dựa trên keywords & labels, xuất kết quả dạng CSV để báo cáo BPM. Sử dụng dễ dàng: `brew install bug-crawler && bug-crawler` - hoàn thành!
+
 ## Cài đặt
 
 ### Yêu cầu

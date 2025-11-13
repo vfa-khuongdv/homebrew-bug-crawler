@@ -15,7 +15,7 @@ import (
 
 func main() {
 	fmt.Println("🐛 Bug Crawler - GitHub PR Bug Analysis Tool")
-	fmt.Println("==========================================\n")
+	fmt.Println("==========================================")
 
 	// 1. Quản lý token
 	tokenMgr := auth.NewTokenManager()
