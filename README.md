@@ -19,21 +19,53 @@
 ## Cài đặt
 
 ### Yêu cầu
-- Go 1.21 hoặc cao hơn
 - GitHub Token (có thể tạo tại https://github.com/settings/tokens)
 
-### Build
+### Cách 1: Cài đặt qua Homebrew (Khuyên dùng)
 
 ```bash
-cd bug_crawler
+# Thêm Homebrew Tap
+brew tap vfa-khuongdv/homebrew-bug-crawler
+
+# Cài đặt
+brew install bug-crawler
+
+# Chạy ứng dụng
+bug-crawler
+```
+
+### Cách 2: Build từ source
+
+**Yêu cầu:**
+- Go 1.23 hoặc cao hơn
+
+**Build:**
+```bash
+git clone https://github.com/vfa-khuongdv/homebrew-bug-crawler.git
+cd homebrew-bug-crawler
 go mod tidy
 go build -o bug-crawler ./cmd/main.go
+
+# Chạy
+./bug-crawler
+```
+
+### Update package
+
+```bash
+brew upgrade bug-crawler
 ```
 
 ## Sử dụng
 
 ### Chạy ứng dụng
 
+Nếu cài đặt qua Homebrew:
+```bash
+bug-crawler
+```
+
+Nếu build từ source:
 ```bash
 ./bug-crawler
 ```
