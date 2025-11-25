@@ -48,45 +48,54 @@ func (ba *BugAnalyzer) AnalyzePR(pr *github.PullRequestData) *BugResult {
 		BugCount:      0,
 	}
 
-	titleLower := strings.ToLower(pr.Title)
 	descLower := strings.ToLower(pr.Description)
 
-	// ✅ ƯTIÊN: Kiểm tra bug_review pattern
+	// Priority 1: Kiểm tra bug_review pattern
 	bugCount, found := ba.extractBugReviewCount(descLower)
 	if found {
 		result.IsBugRelated = true
 		result.BugCount = bugCount
 		result.DetectionType = "bug_review"
+		result.MatchedKeyword = "bug_review"
 		return result
 	}
 
-	// Fallback: Kiểm tra title và description với keywords
-	fullText := titleLower + " " + descLower
-
-	// Kiểm tra bug keywords
-	for _, keyword := range ba.bugKeywords {
-		if strings.Contains(fullText, strings.ToLower(keyword)) {
-			result.IsBugRelated = true
-			result.MatchedKeyword = keyword
-			result.DetectionType = "keyword"
-			break
-		}
+	// Priority 2: Kiểm tra "type: bug" keyword
+	if ba.checkTypeBugKeyword(descLower) {
+		result.IsBugRelated = true
+		result.DetectionType = "keyword"
+		result.MatchedKeyword = "type: bug"
+		return result
 	}
 
-	// Kiểm tra bug labels
+	// Priority 3: Kiểm tra bug labels
 	for _, label := range pr.Labels {
 		if ba.bugLabelRegex.MatchString(label) {
 			result.IsBugRelated = true
-			if result.DetectionType == "keyword" {
-				result.DetectionType = "both"
-			} else {
-				result.DetectionType = "label"
-			}
-			break
+			result.DetectionType = "label"
+			result.MatchedKeyword = label
+			return result
+		}
+	}
+
+	// Priority 4: Fallback - Kiểm tra general bug keywords
+	for _, keyword := range ba.bugKeywords {
+		if strings.Contains(descLower, strings.ToLower(keyword)) {
+			result.IsBugRelated = true
+			result.MatchedKeyword = keyword
+			result.DetectionType = "keyword"
+			return result
 		}
 	}
 
 	return result
+}
+
+// checkTypeBugKeyword kiểm tra pattern "type: bug" trong text
+func (ba *BugAnalyzer) checkTypeBugKeyword(text string) bool {
+	// Tìm pattern: type: bug (case insensitive)
+	re := regexp.MustCompile(`(?i)type:\s*bug`)
+	return re.MatchString(text)
 }
 
 // extractBugReviewCount tìm pattern "bug_review: <number>" trong description
