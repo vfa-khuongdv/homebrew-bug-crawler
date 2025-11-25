@@ -1,31 +1,43 @@
-# Bug Crawler - GitHub PR Bug Analysis Tool
+# 🐛 Bug Crawler - GitHub PR Bug Analysis Tool
 
-Ứng dụng terminal Go để phân tích và thống kê số lượng bug từ Pull Request trên GitHub dựa vào description.
+> Công cụ tự động phân tích và thống kê bug từ Pull Request trên GitHub
 
-## Tính năng
+Ứng dụng terminal Go để phân tích tự động các Pull Request trên GitHub, phát hiện bug dựa trên keywords và labels, rồi xuất kết quả dạng CSV cho báo cáo.
 
-- ✅ Quản lý GitHub token an toàn (lưu vào file config)
-- ✅ **4 chế độ quét repositories**:
-  - Nhập thủ công
-  - Quét repositories của user
-  - Quét repositories của organization
-  - Quét repositories của tài khoản hiện tại
-- ✅ Tự động sử dụng tất cả repositories tìm được (không cần chọn lại)
-- ✅ Phân tích PR trong khoảng thời gian tùy chọn
-- ✅ Detect bug dựa trên keywords và labels
-- ✅ Thống kê chi tiết và tóm tắt
-- ✅ Export kết quả dạng CSV
+## ✨ Tính Năng Chính
 
-## Giới thiệu nhanh cho SPL Lab
+- 🔐 **Quản lý token an toàn** - Lưu GitHub token vào file config được mã hóa
+- 📦 **2 chế độ quét repositories**:
+  - Repositories của tài khoản của bạn (User)
+  - Repositories của Organizations (chọn múi organization)
+- 🎯 **Tự động xử lý** - Sử dụng tất cả repositories tìm được (không cần chọn lại)
+- 📅 **Lọc theo thời gian** - Phân tích PR trong khoảng thời gian tùy chọn
+- 🔍 **2 phương pháp phát hiện bug thông minh**:
+  - Label-based: Phát hiện từ PR labels (`bug`, `fix`, `hotfix`, `critical`, `error`, `issue`)
+  - Tag-based: Phát hiện từ pattern `bug_review: <number>` trong PR description
+- 📊 **Thống kê chi tiết** - Tóm tắt và chi tiết từng PR liên quan bug
+- 📁 **Export CSV** - Xuất kết quả dạng CSV cho báo cáo
 
-**Bug Crawler** là công cụ tự động phân tích bug từ GitHub PR, giúp team **giảm 80% thời gian scan bug sau mỗi sprint**. Chỉ cần nhập GitHub token và chọn repository, tool sẽ tự động phát hiện và thống kê tất cả bug dựa trên keywords & labels, xuất kết quả dạng CSV để báo cáo BPM. Sử dụng dễ dàng: `brew install bug-crawler && bug-crawler` - hoàn thành!
+## 🚀 Giới Thiệu Nhanh
 
-## Cài đặt
+**Bug Crawler** giúp team **giảm 80% thời gian scan bug sau mỗi sprint**. Chỉ cần nhập GitHub token, chọn repositories, tool sẽ tự động:
+- Phát hiện tất cả PR liên quan bug
+- Thống kê chi tiết theo keywords/labels
+- Xuất báo cáo CSV sẵn sàng gửi BPM
 
-### Yêu cầu
-- GitHub Token (có thể tạo tại https://github.com/settings/tokens)
+**Sử dụng:**
+```bash
+brew install vfa-khuongdv/homebrew-bug-crawler/bug-crawler
+bug-crawler
+```
 
-### Cách 1: Cài đặt qua Homebrew (Khuyên dùng)
+## 📥 Cài Đặt
+
+### Yêu Cầu
+- **Go 1.23+** (nếu build từ source)
+- **GitHub Personal Access Token** (tạo tại https://github.com/settings/tokens)
+
+### Cách 1: Cài đặt qua Homebrew ⭐ (Khuyên dùng)
 
 ```bash
 # Thêm Homebrew Tap
@@ -38,166 +50,246 @@ brew install bug-crawler
 bug-crawler
 ```
 
-### Cách 2: Build từ source
+### Cách 2: Build từ Source
 
-**Yêu cầu:**
-- Go 1.23 hoặc cao hơn
-
-**Build:**
 ```bash
 git clone https://github.com/vfa-khuongdv/homebrew-bug-crawler.git
 cd homebrew-bug-crawler
+
+# Tải dependencies
 go mod tidy
+
+# Build
 go build -o bug-crawler ./cmd/main.go
 
 # Chạy
 ./bug-crawler
 ```
 
-### Update package
+### Update Package
 
 ```bash
 brew upgrade bug-crawler
 ```
 
-## Sử dụng
+## 📖 Sử Dụng
 
-### Chạy ứng dụng
+### Chạy Ứng Dụng
 
-Nếu cài đặt qua Homebrew:
+**Cài qua Homebrew:**
 ```bash
 bug-crawler
 ```
 
-Nếu build từ source:
+**Build từ source:**
 ```bash
 ./bug-crawler
 ```
 
-### Luồng sử dụng
+### 🔄 Luồng Sử Dụng Chi Tiết (7 Bước)
 
-1. **Nhập GitHub Token**: Nhập token của bạn hoặc sử dụng token đã lưu
-   - Lần đầu, bạn sẽ được yêu cầu nhập token
-   - Token sẽ được lưu vào `~/.config/bug-crawler/token` nếu bạn chọn
-   - Lần tiếp theo, token sẽ được tải tự động
+#### **Bước 1: GitHub Token**
+- Nhập token GitHub của bạn
+- Hoặc sử dụng token đã lưu từ lần trước
+- Tùy chọn lưu token vào `~/.config/bug-crawler/token` cho lần tiếp theo
 
-2. **Chọn Repositories**: Bạn có 4 cách để quét repositories:
-   
-   **2a. Nhập thủ công**
-   - Nhập danh sách repositories theo format: `owner/repo` (ví dụ: `golang/go`)
-   - Nhập từng repo trên một dòng
-   - Nhấn Enter 2 lần để kết thúc
-   
-   **2b. Quét repositories của user**
-   - Nhập username GitHub
-   - Ứng dụng sẽ tự động quét tất cả repositories của user đó
-   - Sử dụng tất cả repositories tìm được
-   
-   **2c. Quét repositories của organization**
-   - Nhập tên organization
-   - Ứng dụng sẽ tự động quét tất cả repositories của organization
-   - Sử dụng tất cả repositories tìm được
-   
-   **2d. Quét repositories của bạn**
-   - Tự động quét tất cả repositories thuộc tài khoản GitHub của bạn
-   - Sử dụng tất cả repositories tìm được
+#### **Bước 2: Xác Thực**
+- Ứng dụng tự động xác thực token với GitHub API
+- Hiển thị tên tài khoản GitHub đã đăng nhập
 
-3. **Chọn Khoảng Thời Gian**: Nhập ngày bắt đầu và kết thúc
-   - Format: `YYYY-MM-DD` (ví dụ: `2024-01-01`)
+#### **Bước 3: Chọn Scan Source**
+Bạn có 2 lựa chọn:
 
-4. **Phân Tích**: Ứng dụng sẽ crawler PR và phân tích tự động
+**Option 1: Repositories của bạn (User)**
+- Tự động quét tất cả repositories của tài khoản GitHub của bạn
+- Nhanh, phù hợp phân tích toàn bộ projects cá nhân
 
-5. **Kết Quả**:
-   - In tóm tắt thống kê
-   - In chi tiết từng PR liên quan bug
-   - Export file CSV nếu có PR liên quan bug
+**Option 2: Repositories của Organizations**
+- Hiển thị danh sách organizations bạn là thành viên
+- Chọn một hoặc nhiều organizations
+- Ứng dụng sẽ quét tất cả repositories từ organizations đã chọn
 
-## Cấu trúc Thư Mục
+#### **Bước 4: Chọn Repositories**
+- Ứng dụng hiển thị danh sách repositories từ scan source
+- Bạn có thể:
+  - Chọn từng repository bằng arrow keys + Space
+  - Nhập `all` để chọn tất cả
+  - Hoặc nhập số index cách nhau bằng dấu phẩy (ví dụ: `1,3,5`)
+
+#### **Bước 5: Chọn Khoảng Thời Gian**
+- Nhập ngày bắt đầu: `YYYY-MM-DD` (ví dụ: `2024-01-01`)
+- Nhập ngày kết thúc: `YYYY-MM-DD` (ví dụ: `2024-12-31`)
+- Ứng dụng chỉ phân tích PR tạo trong khoảng thời gian này
+
+#### **Bước 6: Chọn Loại Bug**
+Bạn có 2 lựa chọn:
+
+**Option 1: Scan bug (từ labels)**
+- Phát hiện PR có labels liên quan bug
+- Labels được tìm kiếm: `bug`, `fix`, `hotfix`, `critical`, `error`, `issue`
+
+**Option 2: Scan bug_review**
+- Phát hiện PR có pattern `bug_review: <number>` trong description
+- Extract số lượng bugs từ tag này
+
+#### **Bước 7: Crawler, Phân Tích & Báo Cáo**
+- Ứng dụng lấy tất cả PR từ repositories được chọn
+- Phân tích từng PR dựa trên loại bug đã chọn
+- In tóm tắt thống kê
+- In chi tiết PR liên quan bug
+- Export kết quả vào `bug_report.csv`
+
+## 📁 Cấu Trúc Dự Án
 
 ```
-bug_crawler/
+homebrew-bug-crawler/
 ├── cmd/
-│   └── main.go              # Entry point
+│   └── main.go                      # Entry point chính
 ├── pkg/
-│   ├── auth/                # Quản lý GitHub token
-│   ├── github/              # GitHub API client
-│   ├── analyzer/            # Phân tích bug
-│   ├── cli/                 # Interactive CLI
-│   └── report/              # Thống kê & reporting
-├── go.mod                   # Go module
-├── go.sum                   # Checksums
-└── README.md               # Tài liệu
+│   ├── auth/
+│   │   └── auth.go                  # Quản lý GitHub token
+│   ├── cli/
+│   │   └── cli.go                   # Interactive CLI interface
+│   ├── github/
+│   │   └── client.go                # GitHub API client
+│   ├── analyzer/
+│   │   ├── analyzer.go              # Phân tích bug logic
+│   │   └── analyzer_test.go         # Unit tests
+│   └── report/
+│       ├── report.go                # Thống kê & reporting
+│       └── report_test.go           # Unit tests
+├── Formula/
+│   └── bug-crawler.rb               # Homebrew formula
+├── docs/
+│   └── bug-detection-guide.md       # Guide chi tiết phát hiện bug
+├── go.mod                           # Go module definitions
+├── go.sum                           # Dependency checksums
+├── README.md                        # Documentation
+├── USAGE.md                         # Hướng dẫn sử dụng chi tiết
+├── HOMEBREW_SETUP.md               # Hướng dẫn đưa lên Homebrew
+├── TOKEN_SETUP.md                  # Hướng dẫn tạo GitHub token
+└── build.sh                         # Build script
 ```
 
-## Chế Độ Quét Repositories
+## 🎯 Các Chế Độ Quét Repositories
 
-Ứng dụng hỗ trợ 4 chế độ quét repositories:
+### 1. Repositories của Bạn (User)
+- **Mục đích**: Quét tất cả repositories của tài khoản GitHub của bạn
+- **Cách sử dụng**: Chọn option này, ứng dụng sẽ tự động quét
+- **Ưu điểm**: Nhanh, không cần nhập gì, phân tích toàn bộ projects cá nhân
 
-### 1. Nhập Thủ công (Manual)
-- Tự do nhập các repositories theo format `owner/repo`
-- Phù hợp khi bạn biết chính xác repositories muốn phân tích
-- Ví dụ: `golang/go`, `kubernetes/kubernetes`
-
-### 2. Quét User
-- Quét tất cả repositories của một GitHub user
-- Sau đó chọn repositories muốn phân tích
-- Ví dụ: Quét user `torvalds` để xem repositories của Linus Torvalds
-
-### 3. Quét Organization
-- Quét tất cả repositories của một GitHub organization
-- Sau đó chọn repositories muốn phân tích
-- Ví dụ: Quét organization `golang` để xem tất cả repositories của Go project
-
-### 4. Quét User Hiện Tại
-- Tự động quét tất cả repositories của tài khoản GitHub bạn
-- Rất hữu ích để phân tích tất cả projects của bạn
+### 2. Repositories của Organizations
+- **Mục đích**: Quét repositories từ một hoặc nhiều organizations
+- **Cách sử dụng**: 
+  - Hiển thị danh sách organizations bạn là thành viên
+  - Bạn chọn organizations bằng arrow keys + Space
+  - Ứng dụng sẽ quét tất cả repositories từ organizations đã chọn
+- **Ưu điểm**: Linh hoạt, phân tích team/organization projects
 
 ### Cách Chọn Repositories
 Khi ứng dụng liệt kê danh sách repositories:
-- Nhập index repositories (ví dụ: `1,3,5`)
-- Hoặc nhập `all` để chọn tất cả
+- **Arrow keys (↑↓)**: Di chuyển
+- **Space**: Toggle chọn/bỏ chọn
+- **Enter**: Xác nhận lựa chọn
+- **Hoặc nhập số index**: `1,3,5` để chọn repositories 1, 3, 5
+- **Hoặc nhập `all`**: Để chọn tất cả repositories
 
-## Phương Pháp Detect Bug
+## 🔍 Phương Pháp Phát Hiện Bug
 
-Ứng dụng phát hiện bug dựa trên:
+Ứng dụng hỗ trợ **2 phương pháp** phát hiện bug:
 
-1. **Keywords** trong title/description:
-   - `bug`, `fix`, `hotfix`, `patch`
-   - `crash`, `error`, `issue`, `problem`
-   - `failed`, `exception`, `broken`
+### 1. **Phương Pháp 1: Scan bug (Label-based)**
+Phát hiện PR có labels liên quan bug
 
-2. **Labels** của PR:
-   - Regex: `(?i:bug|fix|hotfix|critical|error|issue)`
+**Labels được tìm kiếm** (case-insensitive regex):
+- Bug-related: `bug`, `fix`, `hotfix`, `critical`
+- Error-related: `error`, `issue`
 
-3. **Cơ chế Phát Hiện**:
-   - `keyword`: Phát hiện qua keywords
-   - `label`: Phát hiện qua labels
-   - `both`: Phát hiện qua cả keywords và labels
+**Cách hoạt động:**
+- Kiểm tra tất cả labels của PR
+- Nếu có label khớp với pattern → Detect bug → `DetectionType: "label"`
 
-## GitHub Token
+**Ví dụ:**
+- PR với labels `["bug", "p0"]` → ✅ Phát hiện
+- PR với labels `["documentation"]` → ❌ Không phát hiện
 
-### Cách tạo Personal Access Token
+### 2. **Phương Pháp 2: Scan bug_review (Tag-based)**
+Phát hiện PR có pattern `bug_review: <number>` trong description
 
-1. Đăng nhập vào GitHub
-2. Vào Settings → Developer settings → Personal access tokens → Tokens (classic)
-3. Click "Generate new token (classic)"
-4. Chọn scope: `repo` (full control of private repositories)
-5. Click "Generate token"
-6. Copy token và lưu nơi an toàn
+**Pattern tìm kiếm:** `bug_review:\s*(\d+)`
 
-### Env Variable
+**Cách hoạt động:**
+- Tìm pattern `bug_review: <number>` trong PR description
+- Extract số lượng bugs từ tag này
+- Nếu tìm thấy → Detect bug → `DetectionType: "bug_review"`
+- Lưu số lượng bugs trong `BugCount` field
 
-Bạn cũng có thể sử dụng environment variable:
+**Ví dụ:**
+- Description: "bug_review: 5" → ✅ Phát hiện, BugCount = 5
+- Description: "bug_review: 12" → ✅ Phát hiện, BugCount = 12
+- Description: "No bugs found" → ❌ Không phát hiện
 
-```bash
-export GITHUB_TOKEN=your_token_here
-./bug-crawler
+### Kết Quả Phân Tích
+
+Mỗi PR được lưu với các thông tin:
+```go
+type BugResult struct {
+    PR             *PullRequestData    // Thông tin PR
+    IsBugRelated   bool                 // Có liên quan bug?
+    DetectionType  string               // "label" hoặc "bug_review"
+    MatchedKeyword string               // Label hoặc keyword tìm được
+    BugCount       int                  // Số bugs từ bug_review tag
+}
 ```
 
-## Ví dụ
+### Thống Kê
+
+Báo cáo sẽ phân tách:
+- **PR phát hiện qua label**: Số lượng
+- **PR phát hiện qua bug_review**: Số lượng + Tổng bugs
+- **Tỷ lệ bug**: (PR bug-related / Tổng PR) * 100%
+
+## 🔑 Cách Tạo GitHub Personal Access Token
+
+### Bước 1: Đăng Nhập GitHub
+- Truy cập https://github.com và đăng nhập tài khoản của bạn
+
+### Bước 2: Mở Settings
+- Click vào avatar góc phải → **Settings**
+
+### Bước 3: Developer Settings
+- Scroll xuống, click **Developer settings** (phía trái)
+- Click **Personal access tokens** → **Tokens (classic)**
+
+### Bước 4: Tạo Token Mới
+- Click **Generate new token (classic)**
+- Nhập tên token (ví dụ: "bug-crawler")
+- **Chọn Scope**: Tích vào `repo` (full control of private repositories)
+- Click **Generate token** (dưới cùng)
+
+### Bước 5: Copy Token
+- ⚠️ **Quan trọng**: Copy token ngay lập tức (chỉ hiển thị một lần)
+- Lưu nơi an toàn
+
+### Sử Dụng Token
+
+**Cách 1: Nhập trong ứng dụng**
+- Chạy `bug-crawler` → nhập token khi được yêu cầu
+
+**Cách 2: Environment Variable**
+```bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+bug-crawler
+```
+
+**Cách 3: Lưu vào File Config**
+- Khi chạy ứng dụng, chọn "Yes" khi được hỏi lưu token
+- Token sẽ được lưu vào `~/.config/bug-crawler/token`
+
+## 🎬 Ví Dụ Thực Tế
 
 ```bash
-$ ./bug-crawler
+$ bug-crawler
 
 🐛 Bug Crawler - GitHub PR Bug Analysis Tool
 ==========================================
@@ -212,47 +304,82 @@ Lưu token vào file config?
 
 Step 2: Xác thực GitHub
 ----------------------------------------
+👤 Đăng nhập thành công với: khuongdv
 ✓ Token xác thực thành công
 
-Step 3: Chọn Repositories
+Step 3: Chọn Scan Source
 ----------------------------------------
-Chọn cách quét repositories
-  1. Nhập thủ công (owner/repo)
-  ▸ 2. Quét repositories của user
-    3. Quét repositories của organization
-    4. Quét repositories của tôi
+Chọn loại để scan
+  1. Repositories của tôi (User)
+  ▸ 2. Repositories của Organizations
+✓ Chọn Organizations
 
-GitHub Username: golang
-Đang quét repositories của golang...
-✓ Tìm được 80 repositories
-(Tự động sử dụng tất cả 80 repositories)
+Step 3: Chọn Organizations
+----------------------------------------
+Chọn Organizations (↑↓=navigate, Space=select, Enter=confirm)
+[✓] Golang
+[✓] Kubernetes
+[ ] Docker
+    ...
 
-Step 4: Chọn Khoảng Thời Gian
+Selected: 2/10
+
+Step 4: Chọn Repositories
+----------------------------------------
+📦 Đang quét repositories từ organizations...
+🔄 golang...
+   ✓ 80 repositories
+🔄 kubernetes...
+   ✓ 45 repositories
+
+=============================================
+📋 Repositories đã chọn (125):
+=============================================
+ 1. ✓ golang/go
+ 2. ✓ golang/tools
+ 3. ✓ kubernetes/kubernetes
+ ...
+=============================================
+
+Step 5: Chọn Khoảng Thời Gian
 ----------------------------------------
 Ngày bắt đầu (YYYY-MM-DD): 2024-01-01
 Ngày kết thúc (YYYY-MM-DD): 2024-12-31
+✓ Sẽ phân tích PR từ 2024-01-01 đến 2024-12-31
 
-Step 5: Crawler PR từ GitHub
+Step 6: Chọn Loại Bug
+----------------------------------------
+Chọn loại bug để scan
+  1. Scan bug (từ labels)
+  ▸ 2. Scan bug_review
+✓ Sẽ scan bug_review
+
+Step 7: Crawler PR từ GitHub
 ----------------------------------------
 Đang lấy PR từ golang/go...
 ✓ Tìm được 125 PR
-Đang lấy PR từ golang/mock...
+Đang lấy PR từ golang/tools...
 ✓ Tìm được 35 PR
 ...
 
-Step 6: Thống Kê Kết Quả
+Step 8: Thống Kê Kết Quả
 --------------------------------------------
 ============================================================
-THỐNG KÊ BUG REVIEW CODE
+THỐNG KÊ BUG
 ============================================================
 Tổng số PR: 1250
 PR liên quan bug: 156
-Phát hiện qua keyword: 128
-Phát hiện qua label: 45
+  ├─ Phát hiện qua bug_review tag: 120 (Tổng bugs: 245)
+  └─ Phát hiện qua label: 36
 Tỷ lệ bug: 12.48%
 ============================================================
 
 CHI TIẾT CÁC PR LIÊN QUAN BUG:
+========================================================================================================================
+PR#     TITLE                                    AUTHOR      PHÁT HIỆN   BUGS/KEYWORD/LABEL
+2345    [Bug] Fix critical memory leak           john-doe    bug_review  5
+5678    Fix panic on invalid input               jane-smith  label       bug
+8901    Hotfix: Database connection timeout      bob-wilson  label       fix
 ...
 
 Kết quả đã được export vào: bug_report.csv
@@ -260,24 +387,128 @@ Kết quả đã được export vào: bug_report.csv
 ✓ Hoàn thành!
 ```
 
-## Dependencies
+## 📊 Kết Quả & Hiểu Dữ Liệu
 
-- `github.com/google/go-github/v56` - GitHub API client
-- `github.com/manifoldco/promptui` - Interactive CLI prompts
+### Định Dạng Kết Quả
 
-## Tương Lai
+**Tóm Tắt Thống Kê:**
+```
+============================================================
+THỐNG KÊ BUG
+============================================================
+Tổng số PR: 1250
+PR liên quan bug: 156
+  ├─ Phát hiện qua bug_review tag: 120 (Tổng bugs: 245)
+  └─ Phát hiện qua label: 36
+Tỷ lệ bug: 12.48%
+============================================================
+```
 
-- [ ] Support GraphQL query để fetch dữ liệu nhanh hơn
-- [ ] Support định nghĩa custom keywords
-- [ ] Support export JSON, HTML format
+**Giải thích:**
+- **Tổng số PR**: Tất cả PR trong khoảng thời gian được chọn
+- **PR liên quan bug**: PR được phát hiện có liên quan bug
+- **bug_review tag**: Số PR có pattern `bug_review: <number>`
+  - **Tổng bugs**: Tổng cộng số bugs từ tất cả `bug_review` tags
+- **label**: Số PR có labels liên quan bug
+- **Tỷ lệ bug**: (PR bug-related / Tổng PR) * 100%
+
+**Chi Tiết PR:**
+```
+PR#     TITLE                                    AUTHOR      PHÁT HIỆN   BUGS/KEYWORD/LABEL
+2345    [Bug] Fix critical memory leak           john-doe    bug_review  5
+5678    Fix panic on invalid input               jane-smith  label       bug
+```
+
+### File CSV Export
+
+File `bug_report.csv` chứa:
+- **PR Number**: Số PR
+- **Title**: Tiêu đề PR
+- **Author**: Tác giả PR
+- **Created Date**: Ngày tạo PR
+- **Detection Method**: Cách phát hiện (label/bug_review)
+- **Repository**: Repository name
+- **Bugs/Keyword/Label**: Số bugs hoặc tên label
+- **PR Link**: Link đến PR
+
+## 📚 Dependencies
+
+| Package | Mục Đích | Version |
+|---------|---------|---------|
+| `github.com/google/go-github` | GitHub API client | v56.0.0 |
+| `github.com/manifoldco/promptui` | Interactive CLI prompts | v0.9.0 |
+| `github.com/gdamore/tcell` | Terminal UI support | v2.9.0 |
+
+## 🔧 Phát Triển
+
+### Chạy Tests
+```bash
+go test ./...
+```
+
+### Build Binary
+```bash
+go build -o bug-crawler ./cmd/main.go
+```
+
+### Build cho Nhiều OS
+```bash
+# macOS Intel
+GOOS=darwin GOARCH=amd64 go build -o bug-crawler-darwin-amd64 ./cmd/main.go
+
+# macOS Apple Silicon
+GOOS=darwin GOARCH=arm64 go build -o bug-crawler-darwin-arm64 ./cmd/main.go
+
+# Linux
+GOOS=linux GOARCH=amd64 go build -o bug-crawler-linux-amd64 ./cmd/main.go
+```
+
+## 🚀 Roadmap
+
+- [ ] Support GraphQL queries để fetch dữ liệu nhanh hơn
+- [ ] Định nghĩa custom keywords & patterns
+- [ ] Export JSON, HTML format
 - [ ] Caching PR data để tăng tốc độ
-- [ ] Support filtering by author, status
+- [ ] Filtering advanced (by author, status, assignee)
 - [ ] Web UI dashboard
+- [ ] GitHub Actions integration
+- [ ] Support batch processing
 
-## License
+## 📝 Tài Liệu Khác
 
-MIT
+- **[USAGE.md](./USAGE.md)** - Hướng dẫn sử dụng chi tiết
+- **[TOKEN_SETUP.md](./TOKEN_SETUP.md)** - Cách tạo GitHub token
+- **[HOMEBREW_SETUP.md](./HOMEBREW_SETUP.md)** - Hướng dẫn đưa lên Homebrew
+- **[docs/bug-detection-guide.md](./docs/bug-detection-guide.md)** - Giải thích chi tiết về phát hiện bug
 
-## Tác giả
+## ❓ FAQ
 
-Made with ❤️ for Go developers
+**Q: Tôi có thể phân tích repositories private không?**  
+A: Có, cần GitHub token có scope `repo` để phân tích repositories private.
+
+**Q: Token của tôi có được lưu an toàn không?**  
+A: Token được lưu tại `~/.config/bug-crawler/token` trên máy của bạn. Đây là file cục bộ.
+
+**Q: Làm sao để đổi token?**  
+A: Xóa file `~/.config/bug-crawler/token` hoặc chạy `bug-crawler` và chọn nhập token mới.
+
+**Q: Phân tích bao lâu?**  
+A: Tùy thuộc vào số lượng repositories và PR. Thường từ vài giây đến vài phút.
+
+**Q: Có cách nào để tăng tốc độ không?**  
+A: Chọn repositories cụ thể hoặc khoảng thời gian hẹp để giảm số lượng PR cần phân tích.
+
+## 📞 Support
+
+- 🐛 Báo bug: [GitHub Issues](https://github.com/vfa-khuongdv/homebrew-bug-crawler/issues)
+- 💬 Thảo luận: [GitHub Discussions](https://github.com/vfa-khuongdv/homebrew-bug-crawler/discussions)
+
+## 📄 License
+
+MIT License
+
+## 👨‍💻 Contributors
+
+- **khuongdv** - Creator & Maintainer
+
+Cảm ơn đã sử dụng Bug Crawler! ⭐ Star repository nếu bạn thấy hữu ích!
