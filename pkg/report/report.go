@@ -141,16 +141,22 @@ func (r *Reporter) ExportCSV(filename string, stats *Statistics) error {
 	}
 	defer file.Close()
 
-	fmt.Fprintln(file, "PR#,Title,Author,Detection Type,Matched Keyword,URL")
+	fmt.Fprintln(file, "PR#,Title,Author,Detection Type,Matched Keyword,Number Bug,URL")
 
 	for _, result := range stats.DetailedResults {
 		if result.IsBugRelated {
-			fmt.Fprintf(file, "%d,\"%s\",%s,%s,%s,%s\n",
+			numberBug := 1
+			if result.DetectionType == "bug_review" {
+				numberBug = result.BugCount
+			}
+
+			fmt.Fprintf(file, "%d,\"%s\",%s,%s,%s,%d,%s\n",
 				result.PR.Number,
 				result.PR.Title,
 				result.PR.Author,
 				result.DetectionType,
 				result.MatchedKeyword,
+				numberBug,
 				result.PR.HTMLURL,
 			)
 		}
