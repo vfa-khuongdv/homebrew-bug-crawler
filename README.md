@@ -40,14 +40,24 @@ bug-crawler
 ### Cách 1: Cài đặt qua Homebrew ⭐ (Khuyên dùng)
 
 ```bash
-# Thêm Homebrew Tap
-brew tap vfa-khuongdv/homebrew-bug-crawler
-
 # Cài đặt
+brew tap vfa-khuongdv/homebrew-bug-crawler
 brew install bug-crawler
 
 # Chạy ứng dụng
 bug-crawler
+```
+
+```bash
+# Gỡ cài đặt
+brew untap vfa-khuongdv/homebrew-bug-crawler
+brew uninstall bug-crawler
+```
+
+```bash
+# Cập nhật phiên bản Homebrew Tap
+brew update
+brew upgrade bug-crawler
 ```
 
 ### Cách 2: Build từ Source
@@ -165,10 +175,9 @@ homebrew-bug-crawler/
 ├── go.mod                           # Go module definitions
 ├── go.sum                           # Dependency checksums
 ├── README.md                        # Documentation
+├── Makefile                         # Build script
 ├── USAGE.md                         # Hướng dẫn sử dụng chi tiết
-├── HOMEBREW_SETUP.md               # Hướng dẫn đưa lên Homebrew
-├── TOKEN_SETUP.md                  # Hướng dẫn tạo GitHub token
-└── build.sh                         # Build script
+├── TOKEN_SETUP.md                   # Hướng dẫn tạo GitHub token
 ```
 
 ## 🎯 Các Chế Độ Quét Repositories
@@ -429,6 +438,7 @@ File `bug_report.csv` chứa:
 - **Detection Method**: Cách phát hiện (label/bug_review)
 - **Repository**: Repository name
 - **Bugs/Keyword/Label**: Số bugs hoặc tên label
+- **Opened Date**: Ngày mở PR
 - **PR Link**: Link đến PR
 
 ## 📚 Dependencies
