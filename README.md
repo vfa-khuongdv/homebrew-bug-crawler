@@ -478,7 +478,6 @@ GOOS=linux GOARCH=amd64 go build -o bug-crawler-linux-amd64 ./cmd/main.go
 
 - **[USAGE.md](./USAGE.md)** - Hướng dẫn sử dụng chi tiết
 - **[TOKEN_SETUP.md](./TOKEN_SETUP.md)** - Cách tạo GitHub token
-- **[HOMEBREW_SETUP.md](./HOMEBREW_SETUP.md)** - Hướng dẫn đưa lên Homebrew
 - **[docs/bug-detection-guide.md](./docs/bug-detection-guide.md)** - Giải thích chi tiết về phát hiện bug
 
 ## ❓ FAQ
