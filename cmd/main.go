@@ -206,6 +206,7 @@ func main() {
 
 	bugAnalyzer := analyzer.NewBugAnalyzer()
 	allResults := make([]*analyzer.BugResult, 0)
+	totalPRsCrawled := 0 // Đếm tổng số PR thực tế
 
 	for _, repoStr := range repos {
 		parts := strings.Split(repoStr, "/")
@@ -226,6 +227,7 @@ func main() {
 		}
 
 		fmt.Printf("✓ Tìm được %d PR\n", len(prs))
+		totalPRsCrawled += len(prs) // Cộng vào tổng
 
 		// Phân tích PR
 		results := bugAnalyzer.AnalyzePRs(prs, bugType)
@@ -257,6 +259,12 @@ func main() {
 
 	reporter := report.NewReporter()
 	stats := reporter.GenerateStatistics(filteredResults)
+	stats.TotalPRsCrawled = totalPRsCrawled // Ghi nhận tổng số PR thực tế
+
+	// Tính lại BugPercentage dựa trên tổng PR thực tế được crawl
+	if stats.TotalPRsCrawled > 0 {
+		stats.BugPercentage = float64(stats.BugRelatedPRs) * 100 / float64(stats.TotalPRsCrawled)
+	}
 
 	reporter.PrintSummary(stats)
 	reporter.PrintDetails(stats)

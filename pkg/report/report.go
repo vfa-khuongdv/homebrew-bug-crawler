@@ -10,7 +10,8 @@ import (
 
 // Statistics chứa thống kê bug
 type Statistics struct {
-	TotalPRs        int
+	TotalPRsCrawled int // Tổng số PR được crawl
+	TotalPRs        int // Số PR trong kết quả đưa vào (có thể bị lọc)
 	BugRelatedPRs   int
 	ByKeyword       int
 	ByLabel         int
@@ -31,6 +32,7 @@ func NewReporter() *Reporter {
 // GenerateStatistics tạo thống kê từ kết quả phân tích
 func (r *Reporter) GenerateStatistics(results []*analyzer.BugResult) *Statistics {
 	stats := &Statistics{
+		TotalPRsCrawled: len(results), // Sẽ cập nhật lại nếu có thông tin từ main
 		TotalPRs:        len(results),
 		DetailedResults: results,
 	}
@@ -58,9 +60,7 @@ func (r *Reporter) GenerateStatistics(results []*analyzer.BugResult) *Statistics
 	stats.ByBugReview = byBugReview
 	stats.TotalBugCount = totalBugCount
 
-	if stats.TotalPRs > 0 {
-		stats.BugPercentage = float64(bugCount) * 100 / float64(stats.TotalPRs)
-	}
+	// Không tính BugPercentage ở đây, sẽ tính ở main sau khi cập nhật TotalPRsCrawled
 
 	return stats
 }
@@ -71,7 +71,7 @@ func (r *Reporter) PrintSummary(stats *Statistics) {
 	fmt.Println("\n" + separator)
 	fmt.Println("THỐNG KÊ BUG")
 	fmt.Println(separator)
-	fmt.Printf("Tổng số PR: %d\n", stats.TotalPRs)
+	fmt.Printf("Tổng số PR được crawl: %d\n", stats.TotalPRsCrawled)
 	fmt.Printf("PR liên quan bug: %d\n", stats.BugRelatedPRs)
 	if stats.ByBugReview > 0 {
 		fmt.Printf("  ├─ Phát hiện qua bug_review tag: %d (Tổng bugs: %d)\n", stats.ByBugReview, stats.TotalBugCount)
@@ -79,7 +79,9 @@ func (r *Reporter) PrintSummary(stats *Statistics) {
 	if stats.ByLabel > 0 {
 		fmt.Printf("  └─ Phát hiện qua label: %d\n", stats.ByLabel)
 	}
-	fmt.Printf("Tỷ lệ bug: %.2f%%\n", stats.BugPercentage)
+	if stats.TotalPRsCrawled > 0 {
+		fmt.Printf("Tỷ lệ bug: %.2f%%\n", stats.BugPercentage)
+	}
 	fmt.Println(separator)
 }
 
