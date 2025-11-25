@@ -35,7 +35,6 @@ func (r *Reporter) GenerateStatistics(results []*analyzer.BugResult) *Statistics
 		DetailedResults: results,
 	}
 
-	byKeyword := 0
 	byLabel := 0
 	byBugReview := 0
 	totalBugCount := 0
@@ -45,12 +44,7 @@ func (r *Reporter) GenerateStatistics(results []*analyzer.BugResult) *Statistics
 		if result.IsBugRelated {
 			bugCount++
 			switch result.DetectionType {
-			case "keyword":
-				byKeyword++
 			case "label":
-				byLabel++
-			case "both":
-				byKeyword++
 				byLabel++
 			case "bug_review":
 				byBugReview++
@@ -60,7 +54,6 @@ func (r *Reporter) GenerateStatistics(results []*analyzer.BugResult) *Statistics
 	}
 
 	stats.BugRelatedPRs = bugCount
-	stats.ByKeyword = byKeyword
 	stats.ByLabel = byLabel
 	stats.ByBugReview = byBugReview
 	stats.TotalBugCount = totalBugCount
@@ -76,15 +69,12 @@ func (r *Reporter) GenerateStatistics(results []*analyzer.BugResult) *Statistics
 func (r *Reporter) PrintSummary(stats *Statistics) {
 	separator := "============================================================"
 	fmt.Println("\n" + separator)
-	fmt.Println("THỐNG KÊ BUG REVIEW CODE")
+	fmt.Println("THỐNG KÊ BUG")
 	fmt.Println(separator)
 	fmt.Printf("Tổng số PR: %d\n", stats.TotalPRs)
 	fmt.Printf("PR liên quan bug: %d\n", stats.BugRelatedPRs)
 	if stats.ByBugReview > 0 {
 		fmt.Printf("  ├─ Phát hiện qua bug_review tag: %d (Tổng bugs: %d)\n", stats.ByBugReview, stats.TotalBugCount)
-	}
-	if stats.ByKeyword > 0 {
-		fmt.Printf("  ├─ Phát hiện qua keyword: %d\n", stats.ByKeyword)
 	}
 	if stats.ByLabel > 0 {
 		fmt.Printf("  └─ Phát hiện qua label: %d\n", stats.ByLabel)
