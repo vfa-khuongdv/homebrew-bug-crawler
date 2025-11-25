@@ -53,7 +53,7 @@ func (c *Client) GetPullRequests(ctx context.Context, owner, repo string, startD
 
 		for _, pr := range githubPRs {
 			// Bỏ qua PR ngoài khoảng thời gian
-			if pr.CreatedAt.Time.Before(startDate) || pr.CreatedAt.Time.After(endDate) {
+			if pr.CreatedAt.Before(startDate) || pr.CreatedAt.After(endDate) {
 				continue
 			}
 

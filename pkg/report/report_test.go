@@ -55,7 +55,7 @@ func TestExportCSV(t *testing.T) {
 
 	reporter := NewReporter()
 	filename := "test_report.csv"
-	defer os.Remove(filename)
+	defer func() { _ = os.Remove(filename) }()
 
 	// Execute
 	err := reporter.ExportCSV(filename, stats)
@@ -75,7 +75,7 @@ func TestExportCSV(t *testing.T) {
 	}
 
 	// Check header
-	expectedHeader := "PR#,Title,Author,Detection Type,Matched Keyword,Number Bug,URL"
+	expectedHeader := "PR#,Title,Author,Detection Type,Matched Keyword,Number Bug,Date Opened,URL"
 	if lines[0] != expectedHeader {
 		t.Errorf("Header mismatch.\nExpected: %s\nGot:      %s", expectedHeader, lines[0])
 	}

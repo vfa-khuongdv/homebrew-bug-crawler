@@ -96,7 +96,7 @@ func (r *Reporter) PrintDetails(stats *Statistics) {
 	fmt.Println(separator)
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "PR#\tTITLE\tAUTHOR\tPHẦT HIỆN\tBUGS/KEYWORD/LABEL")
+	_, _ = fmt.Fprintln(w, "PR#\tTITLE\tAUTHOR\tPHẦT HIỆN\tBUGS/KEYWORD/LABEL")
 
 	for _, result := range stats.DetailedResults {
 		if result.IsBugRelated {
@@ -112,7 +112,7 @@ func (r *Reporter) PrintDetails(stats *Statistics) {
 				detailInfo = result.MatchedKeyword
 			}
 
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
 				result.PR.Number,
 				title,
 				result.PR.Author,
@@ -121,7 +121,7 @@ func (r *Reporter) PrintDetails(stats *Statistics) {
 		}
 	}
 
-	w.Flush()
+	_ = w.Flush()
 	fmt.Println(separator)
 }
 
@@ -131,9 +131,9 @@ func (r *Reporter) ExportCSV(filename string, stats *Statistics) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
-	fmt.Fprintln(file, "PR#,Title,Author,Detection Type,Matched Keyword,Number Bug,Date Opened,URL")
+	_, _ = fmt.Fprintln(file, "PR#,Title,Author,Detection Type,Matched Keyword,Number Bug,Date Opened,URL")
 
 	for _, result := range stats.DetailedResults {
 		if result.IsBugRelated {
@@ -142,7 +142,7 @@ func (r *Reporter) ExportCSV(filename string, stats *Statistics) error {
 				numberBug = result.BugCount
 			}
 
-			fmt.Fprintf(file, "%d,\"%s\",%s,%s,%s,%d,%s,%s\n",
+			_, _ = fmt.Fprintf(file, "%d,\"%s\",%s,%s,%s,%d,%s,%s\n",
 				result.PR.Number,
 				result.PR.Title,
 				result.PR.Author,

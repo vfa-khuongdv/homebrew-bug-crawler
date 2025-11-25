@@ -293,7 +293,7 @@ func (c *CLI) simpleSelectRepositories(repos []string) ([]string, error) {
 
 		var input string
 		fmt.Print("Nhập số (1,3,5) hoặc 'all', Enter để xác nhận: ")
-		fmt.Scanln(&input)
+		_, _ = fmt.Scanln(&input)
 
 		input = strings.TrimSpace(input)
 
@@ -620,7 +620,7 @@ func (c *CLI) simpleSelectFromList(items []string, itemType string) ([]string, e
 
 		var input string
 		fmt.Print("Nhập số (1,3,5) hoặc 'all', Enter để xác nhận: ")
-		fmt.Scanln(&input)
+		_, _ = fmt.Scanln(&input)
 
 		input = strings.TrimSpace(input)
 
