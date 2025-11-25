@@ -7,17 +7,17 @@ class BugCrawler < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.2/bug-crawler-darwin-arm64"
-      sha256 "ac16fa9e504aa1de7173e1cae6c129103a7f52e38c3aca3ee156a79303976ce1"
+      sha256 "3113ac18abb0251cabffae60f157142f7b169471a50e5aa0493e95666559b192"
     end
     if Hardware::CPU.intel?
       url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.2/bug-crawler-darwin-amd64"
-      sha256 "a98d263c3cfe793f87b59ae863faf6c8e974f9c156bdddd6537fc4287cce5aff"
+      sha256 "e527627ef63d3841f9d3cdd5f7e312e37b47827cf83ec4d18e03b4f6aaa890a9"
     end
   end
 
   on_linux do
     url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.2/bug-crawler-linux-amd64"
-    sha256 "757e2b54655686be370f6c76cc52fdc755a0c07412ca20a0c32952dbcdca9e90"
+    sha256 "6bc49863ff05e3f6476a88bb6dfef0581172abc1a31c1e3cc6f25b4abe81a402"
   end
 
   def install
