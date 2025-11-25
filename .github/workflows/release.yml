@@ -114,22 +114,22 @@ jobs:
           class BugCrawler < Formula
             desc "GitHub PR Bug Analysis Tool - analyze and count bugs from pull requests"
             homepage "https://github.com/vfa-khuongdv/bug-crawler"
-            version "VERSION_PLACEHOLDER"
+            version "VERSION_NUMBER"
             license "MIT"
           
             on_macos do
               if Hardware::CPU.arm?
-                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_PLACEHOLDER/bug-crawler-darwin-arm64"
+                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_TAG/bug-crawler-darwin-arm64"
                 sha256 "DARWIN_ARM64_SHA_PLACEHOLDER"
               end
               if Hardware::CPU.intel?
-                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_PLACEHOLDER/bug-crawler-darwin-amd64"
+                url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_TAG/bug-crawler-darwin-amd64"
                 sha256 "DARWIN_AMD64_SHA_PLACEHOLDER"
               end
             end
           
             on_linux do
-              url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_PLACEHOLDER/bug-crawler-linux-amd64"
+              url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/VERSION_TAG/bug-crawler-linux-amd64"
               sha256 "LINUX_AMD64_SHA_PLACEHOLDER"
             end
           
@@ -144,11 +144,11 @@ jobs:
           EOL
           
           # Replace placeholders
-          sed -i "s|VERSION_PLACEHOLDER|${VERSION#v}|g" Formula/bug-crawler.rb
+          sed -i "s|VERSION_NUMBER|${VERSION#v}|g" Formula/bug-crawler.rb
+          sed -i "s|VERSION_TAG|${VERSION}|g" Formula/bug-crawler.rb
           sed -i "s|DARWIN_ARM64_SHA_PLACEHOLDER|${DARWIN_ARM64_SHA}|g" Formula/bug-crawler.rb
           sed -i "s|DARWIN_AMD64_SHA_PLACEHOLDER|${DARWIN_AMD64_SHA}|g" Formula/bug-crawler.rb
           sed -i "s|LINUX_AMD64_SHA_PLACEHOLDER|${LINUX_AMD64_SHA}|g" Formula/bug-crawler.rb
-          sed -i "s|VERSION_PLACEHOLDER|${VERSION}|g" Formula/bug-crawler.rb
           
           # Verify changes
           echo "Updated formula:"
