@@ -184,8 +184,24 @@ func main() {
 
 	fmt.Printf("✓ Sẽ phân tích PR từ %s đến %s\n", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	// 5. Crawler PR
-	fmt.Println("\nStep 5: Crawler PR từ GitHub")
+	// 5. Chọn loại bug để scan
+	fmt.Println("\nStep 5: Chọn Loại Bug")
+	fmt.Println("-" + strings.Repeat("-", 40) + "-")
+
+	bugType, err := cliTool.PromptSelectBugType()
+	if err != nil {
+		fmt.Println("❌ Lỗi khi chọn loại bug:", err)
+		os.Exit(1)
+	}
+
+	if bugType == "bug" {
+		fmt.Println("✓ Sẽ scan bug từ labels")
+	} else {
+		fmt.Println("✓ Sẽ scan bug_review")
+	}
+
+	// 6. Crawler PR
+	fmt.Println("\nStep 6: Crawler PR từ GitHub")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
 	bugAnalyzer := analyzer.NewBugAnalyzer()
@@ -212,21 +228,40 @@ func main() {
 		fmt.Printf("✓ Tìm được %d PR\n", len(prs))
 
 		// Phân tích PR
-		results := bugAnalyzer.AnalyzePRs(prs)
+		results := bugAnalyzer.AnalyzePRs(prs, bugType)
 		allResults = append(allResults, results...)
 	}
 
-	// 6. Thống kê và in báo cáo
-	fmt.Println("\nStep 6: Thống Kê Kết Quả")
+	// Lọc kết quả theo loại bug đã chọn
+	var filteredResults []*analyzer.BugResult
+	switch bugType {
+	case "bug_review":
+		// Chỉ lấy PR có DetectionType là "bug_review"
+		for _, result := range allResults {
+			if result.DetectionType == "bug_review" {
+				filteredResults = append(filteredResults, result)
+			}
+		}
+	case "bug":
+		// Chỉ lấy PR có DetectionType là "label" (bug từ labels)
+		for _, result := range allResults {
+			if result.DetectionType == "label" {
+				filteredResults = append(filteredResults, result)
+			}
+		}
+	}
+
+	// 7. Thống kê và in báo cáo
+	fmt.Println("\nStep 7: Thống Kê Kết Quả")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
 	reporter := report.NewReporter()
-	stats := reporter.GenerateStatistics(allResults)
+	stats := reporter.GenerateStatistics(filteredResults)
 
 	reporter.PrintSummary(stats)
 	reporter.PrintDetails(stats)
 
-	// 7. Export CSV (optional)
+	// 8. Export CSV (optional)
 	if stats.BugRelatedPRs > 0 {
 		csvFile := "bug_report.csv"
 		if err := reporter.ExportCSV(csvFile, stats); err != nil {
