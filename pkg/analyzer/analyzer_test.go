@@ -561,3 +561,414 @@ func TestNewBugAnalyzer(t *testing.T) {
 		t.Error("bugLabelRegex should not be nil")
 	}
 }
+
+// Tests for PRRuleAnalyzer
+
+func TestCheckKeywordsInText(t *testing.T) {
+	analyzer := NewPRRuleAnalyzer()
+
+	tests := []struct {
+		name        string
+		text        string
+		keywords    []string
+		wantValid   bool
+		wantMissing int
+	}{
+		{
+			name:        "All keywords present",
+			text:        "Description of the work. Changes Made to the code. Self-Review checklist completed. Functionality is working. Security is handled. Error Handling is in place. Code Style follows conventions.",
+			keywords:    DescriptionKeywords,
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name:        "Missing one keyword",
+			text:        "Description of the work. Changes Made to the code. Self-Review checklist. Functionality works. Security is good. Error Handling included.",
+			keywords:    DescriptionKeywords,
+			wantValid:   false,
+			wantMissing: 1,
+		},
+		{
+			name:        "Missing multiple keywords",
+			text:        "Description provided. Changes Made documented.",
+			keywords:    DescriptionKeywords,
+			wantValid:   false,
+			wantMissing: 5,
+		},
+		{
+			name:        "Case insensitive matching",
+			text:        "DESCRIPTION of work. CHANGES MADE to files. SELF-REVIEW done. FUNCTIONALITY tested. SECURITY checked. ERROR HANDLING implemented. CODE STYLE followed.",
+			keywords:    DescriptionKeywords,
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name:        "Mixed case keywords",
+			text:        "description here. Changes Made included. self-review completed. Functionality present. Security evaluated. error handling done. Code Style checked.",
+			keywords:    DescriptionKeywords,
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name:        "Review comment keywords present",
+			text:        "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive. Code Style is excellent.",
+			keywords:    ReviewCommentKeywords,
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name:        "Review comment missing keyword",
+			text:        "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive. Performance is excellent.",
+			keywords:    ReviewCommentKeywords,
+			wantValid:   false,
+			wantMissing: 1,
+		},
+		{
+			name:        "Empty text",
+			text:        "",
+			keywords:    ReviewCommentKeywords,
+			wantValid:   false,
+			wantMissing: 4,
+		},
+		{
+			name:        "Keywords with special characters",
+			text:        "This addresses: Description, Changes Made, Self-Review, Functionality, Security, Error Handling, Code Style.",
+			keywords:    DescriptionKeywords,
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name:        "Partial keyword match (should fail)",
+			text:        "Describe the change. Change made. Self. Function. Secure. Error. Code.",
+			keywords:    DescriptionKeywords,
+			wantValid:   false,
+			wantMissing: 7,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid, missing := analyzer.CheckKeywordsInText(tt.text, tt.keywords)
+
+			if valid != tt.wantValid {
+				t.Errorf("CheckKeywordsInText() valid = %v, want %v", valid, tt.wantValid)
+			}
+
+			if len(missing) != tt.wantMissing {
+				t.Errorf("CheckKeywordsInText() missing count = %d, want %d", len(missing), tt.wantMissing)
+				t.Logf("Missing keywords: %v", missing)
+			}
+		})
+	}
+}
+
+func TestCheckReviewComments(t *testing.T) {
+	analyzer := NewPRRuleAnalyzer()
+
+	tests := []struct {
+		name        string
+		reviews     []*github.ReviewData
+		wantValid   bool
+		wantMissing int
+	}{
+		{
+			name: "All review comment keywords present",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive. Code Style is excellent.",
+				},
+			},
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name: "Multiple reviewers with combined coverage",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "Functionality is working well. Security is good.",
+				},
+				{
+					ReviewerLogin: "reviewer2",
+					State:         "COMMENTED",
+					CommentBody:   "Error Handling looks solid. Code Style needs improvement.",
+				},
+			},
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name: "Missing one keyword in single review",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "Functionality is good. Security is solid. Error Handling is implemented. Performance looks fine.",
+				},
+			},
+			wantValid:   false,
+			wantMissing: 1,
+		},
+		{
+			name: "Multiple reviews with missing keywords",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "Functionality is good.",
+				},
+				{
+					ReviewerLogin: "reviewer2",
+					State:         "COMMENTED",
+					CommentBody:   "Security is fine.",
+				},
+			},
+			wantValid:   false,
+			wantMissing: 2,
+		},
+		{
+			name:        "No reviews",
+			reviews:     []*github.ReviewData{},
+			wantValid:   false,
+			wantMissing: 4,
+		},
+		{
+			name: "Review with empty comment",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "",
+				},
+			},
+			wantValid:   false,
+			wantMissing: 4,
+		},
+		{
+			name: "Multiple reviews with empty comments",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "",
+				},
+				{
+					ReviewerLogin: "reviewer2",
+					State:         "COMMENTED",
+					CommentBody:   "",
+				},
+			},
+			wantValid:   false,
+			wantMissing: 4,
+		},
+		{
+			name: "Case insensitive review comments",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "FUNCTIONALITY is good. SECURITY is solid. ERROR HANDLING is complete. CODE STYLE is correct.",
+				},
+			},
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name: "Mixed case review keywords",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "functionality is reviewed. Security checked. error handling implemented. code style verified.",
+				},
+			},
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name: "Review with all keywords spread across reviews",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "Functionality works.",
+				},
+				{
+					ReviewerLogin: "reviewer2",
+					State:         "COMMENTED",
+					CommentBody:   "Security looks good.",
+				},
+				{
+					ReviewerLogin: "reviewer3",
+					State:         "APPROVED",
+					CommentBody:   "Error Handling is comprehensive.",
+				},
+				{
+					ReviewerLogin: "reviewer4",
+					State:         "COMMENTED",
+					CommentBody:   "Code Style follows conventions.",
+				},
+			},
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name: "Single review with all keywords",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "senior_reviewer",
+					State:         "APPROVED",
+					CommentBody:   "Excellent work! Functionality is robust, Security is well-handled, Error Handling covers edge cases, and Code Style is consistent with project standards.",
+				},
+			},
+			wantValid:   true,
+			wantMissing: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid, missing := analyzer.CheckReviewComments(tt.reviews)
+
+			if valid != tt.wantValid {
+				t.Errorf("CheckReviewComments() valid = %v, want %v", valid, tt.wantValid)
+			}
+
+			if len(missing) != tt.wantMissing {
+				t.Errorf("CheckReviewComments() missing count = %d, want %d", len(missing), tt.wantMissing)
+				t.Logf("Missing keywords: %v", missing)
+			}
+		})
+	}
+}
+
+func TestAnalyzePRRule(t *testing.T) {
+	analyzer := NewPRRuleAnalyzer()
+
+	tests := []struct {
+		name                   string
+		pr                     *github.PullRequestData
+		wantDescriptionValid   bool
+		wantReviewCommentValid bool
+		wantCompliant          bool
+	}{
+		{
+			name: "Fully compliant PR",
+			pr: &github.PullRequestData{
+				Number:      1,
+				Title:       "Add feature",
+				Description: "Description: Feature overview. Changes Made: Added new component. Self-Review: Tested manually. Functionality: Works as expected. Security: No issues. Error Handling: Try-catch implemented. Code Style: Follows conventions.",
+				Reviews: []*github.ReviewData{
+					{
+						ReviewerLogin: "reviewer1",
+						State:         "APPROVED",
+						CommentBody:   "Functionality looks great. Security is solid. Error Handling is comprehensive. Code Style is excellent.",
+					},
+				},
+				HTMLURL: "https://github.com/test/pull/1",
+			},
+			wantDescriptionValid:   true,
+			wantReviewCommentValid: true,
+			wantCompliant:          true,
+		},
+		{
+			name: "Missing description keywords",
+			pr: &github.PullRequestData{
+				Number:      2,
+				Title:       "Fix bug",
+				Description: "This is a simple PR without proper keywords",
+				Reviews: []*github.ReviewData{
+					{
+						ReviewerLogin: "reviewer1",
+						State:         "APPROVED",
+						CommentBody:   "Functionality works. Security is good. Error Handling is fine. Code Style is okay.",
+					},
+				},
+				HTMLURL: "https://github.com/test/pull/2",
+			},
+			wantDescriptionValid:   false,
+			wantReviewCommentValid: true,
+			wantCompliant:          false,
+		},
+		{
+			name: "Missing review comment keywords",
+			pr: &github.PullRequestData{
+				Number:      3,
+				Title:       "Refactor code",
+				Description: "Description: Refactoring. Changes Made: Updated logic. Self-Review: Checked. Functionality: Tested. Security: Verified. Error Handling: Handled. Code Style: Formatted.",
+				Reviews: []*github.ReviewData{
+					{
+						ReviewerLogin: "reviewer1",
+						State:         "APPROVED",
+						CommentBody:   "LGTM!",
+					},
+				},
+				HTMLURL: "https://github.com/test/pull/3",
+			},
+			wantDescriptionValid:   true,
+			wantReviewCommentValid: false,
+			wantCompliant:          false,
+		},
+		{
+			name: "Missing both description and review keywords",
+			pr: &github.PullRequestData{
+				Number:      4,
+				Title:       "Update docs",
+				Description: "Just updated the documentation file",
+				Reviews: []*github.ReviewData{
+					{
+						ReviewerLogin: "reviewer1",
+						State:         "APPROVED",
+						CommentBody:   "Looks good",
+					},
+				},
+				HTMLURL: "https://github.com/test/pull/4",
+			},
+			wantDescriptionValid:   false,
+			wantReviewCommentValid: false,
+			wantCompliant:          false,
+		},
+		{
+			name: "No reviews",
+			pr: &github.PullRequestData{
+				Number:      5,
+				Title:       "Add feature",
+				Description: "Description: New feature. Changes Made: Files added. Self-Review: Done. Functionality: Tested. Security: Checked. Error Handling: Implemented. Code Style: Verified.",
+				Reviews:     []*github.ReviewData{},
+				HTMLURL:     "https://github.com/test/pull/5",
+			},
+			wantDescriptionValid:   true,
+			wantReviewCommentValid: false,
+			wantCompliant:          false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := analyzer.AnalyzePRRule(tt.pr)
+
+			if result.PRDescriptionValid != tt.wantDescriptionValid {
+				t.Errorf("AnalyzePRRule() PRDescriptionValid = %v, want %v", result.PRDescriptionValid, tt.wantDescriptionValid)
+			}
+
+			if result.ReviewCommentValid != tt.wantReviewCommentValid {
+				t.Errorf("AnalyzePRRule() ReviewCommentValid = %v, want %v", result.ReviewCommentValid, tt.wantReviewCommentValid)
+			}
+
+			if result.PRCompliant != tt.wantCompliant {
+				t.Errorf("AnalyzePRRule() PRCompliant = %v, want %v", result.PRCompliant, tt.wantCompliant)
+			}
+
+			if len(result.MissingDescKeywords) > 0 && tt.wantDescriptionValid {
+				t.Errorf("AnalyzePRRule() should not have missing keywords when valid, got: %v", result.MissingDescKeywords)
+			}
+
+			if len(result.MissingReviewKeywords) > 0 && tt.wantReviewCommentValid {
+				t.Errorf("AnalyzePRRule() should not have missing review keywords when valid, got: %v", result.MissingReviewKeywords)
+			}
+		})
+	}
+}

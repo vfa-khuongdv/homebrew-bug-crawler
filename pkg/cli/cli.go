@@ -445,6 +445,27 @@ func (c *CLI) PromptSelectScanSource() (string, error) {
 	return "org", nil
 }
 
+// PromptSelectScanMode cho phép chọn giữa Bug Scan và PR Rules Scan
+func (c *CLI) PromptSelectScanMode() (string, error) {
+	prompt := promptui.Select{
+		Label: "Chọn chế độ scan",
+		Items: []string{
+			"1. Bug Detection (Scan bugs)",
+			"2. Code Review Compliance (Scan PR rules)",
+		},
+	}
+
+	index, _, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	if index == 0 {
+		return "bug", nil
+	}
+	return "pr_rules", nil
+}
+
 // PromptSelectBugType cho phép chọn loại bug để scan
 func (c *CLI) PromptSelectBugType() (string, error) {
 	prompt := promptui.Select{
