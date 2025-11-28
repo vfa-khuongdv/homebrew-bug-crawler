@@ -20,7 +20,7 @@ Kết quả được ghi vào file CSV để team có thể:
 
 ## 📝 Tiêu Chí Kiểm Tra PR Description
 
-Tool sẽ quét phần mô tả (description) của mỗi PR và kiểm tra xem có chứa **TẤT CẢ** các keyword sau hay không:
+Tool sẽ quét phần mô tả (description) của mỗi PR và kiểm tra xem có chứa **ít nhất 3** trong các keyword sau hay không:
 
 ### Danh Sách Keyword Được Kiểm Tra
 
@@ -118,23 +118,13 @@ hệ thống sẽ yêu cầu nhập mã OTP từ authenticator app.
 ```
 
 > [!IMPORTANT]
-> Tool sẽ đánh dấu PR là **KHÔNG ĐẠT CHUẨN** (`pr_description_valid = false`) nếu thiếu bất kỳ keyword nào trong danh sách trên.
+> Tool sẽ đánh dấu PR là **KHÔNG ĐẠT CHUẨN** (`pr_description_valid = false`) nếu không có đủ ít nhất 3 keywords trong danh sách trên.
 
 ---
 
-## ✅ Tiêu Chí Kiểm Tra Approval Status
-
-Tool sẽ kiểm tra trạng thái approval của PR để xác định xem PR đã được review và chấp nhận chưa.
-
-### Điều Kiện Được Coi Là "Approved"
-
-Tool kiểm tra:
-- ✅ PR có **ít nhất 1 reviewer đã approve** không?
-- ✅ Không có **Request Changes** đang pending
-
 ### Tiêu Chí Kiểm Tra Review Comment
 
-Khi PR đã được **approve**, tool sẽ quét comment của reviewer để kiểm tra xem có đề cập đến **TẤT CẢ** các khía cạnh sau hay không:
+Tool sẽ quét comment của reviewer để kiểm tra xem có đề cập đến **ít nhất 3** trong các khía cạnh sau hay không:
 
 | Keyword | Ý Nghĩa | Tool Kiểm Tra |
 |---------|---------|---------------|
@@ -246,10 +236,7 @@ flowchart TD
     CheckDesc -->|Thiếu keyword| DescFail[❌ PR Description<br/>không hợp lệ]
     CheckDesc -->|Đủ keyword| DescPass[✅ Description OK]
     
-    DescPass --> CheckApproval{PR đã được<br/>Approve?}
-    
-    CheckApproval -->|Chưa| NotApproved[⏳ Chờ Approval]
-    CheckApproval -->|Rồi| CheckReview{Kiểm tra<br/>Review Comment}
+    DescPass --> CheckReview{Kiểm tra<br/>Review Comment}
     
     CheckReview -->|Thiếu keyword| ReviewFail[❌ Review Comment<br/>không hợp lệ]
     CheckReview -->|Đủ keyword| ReviewPass[✅ Review OK]
@@ -276,30 +263,20 @@ Tool sẽ quét phần mô tả PR và tìm kiếm các keyword:
 - Code Style
 
 **Kết quả ghi vào CSV:**
-- ✅ `pr_description_valid = true`: Nếu tìm thấy TẤT CẢ 7 keywords
-- ❌ `pr_description_valid = false`: Nếu thiếu bất kỳ keyword nào
+- ✅ `pr_description_valid = true`: Nếu tìm thấy ít nhất 3 keywords
+- ❌ `pr_description_valid = false`: Nếu thiếu keywords
 
-### Bước 2: Tool Kiểm Tra Approval Status
+### Bước 2: Tool Quét Review Comment
 
-Tool sẽ kiểm tra:
-- PR có ít nhất 1 approval từ reviewer
-- Không có "Request Changes" đang pending
-
-**Kết quả ghi vào CSV:**
-- ✅ `is_approved = true`: PR đã được approve
-- ❌ `is_approved = false`: Chưa có approval hoặc có request changes
-
-### Bước 3: Tool Quét Review Comment (Chỉ Khi PR Đã Approve)
-
-Nếu PR đã được approve, tool sẽ quét comment của reviewer và tìm kiếm:
+Tool sẽ quét comment của reviewer và tìm kiếm:
 - Functionality
 - Security
 - Error Handling
 - Code Style
 
 **Kết quả ghi vào CSV:**
-- ✅ `review_comment_valid = true`: Nếu tìm thấy TẤT CẢ 4 keywords
-- ❌ `review_comment_valid = false`: Nếu thiếu bất kỳ keyword nào
+- ✅ `review_comment_valid = true`: Nếu tìm thấy ít nhất 3 keywords
+- ❌ `review_comment_valid = false`: Nếu thiếu keywords
 
 ---
 
@@ -308,29 +285,30 @@ Nếu PR đã được approve, tool sẽ quét comment của reviewer và tìm 
 Sau khi scan, tool sẽ tạo file CSV với các cột thông tin sau cho mỗi PR:
 
 | Cột CSV | Ý Nghĩa | Giá Trị |
-|---------|---------|---------|
+|---------|---------|----------|
 | **pr_number** | Số PR | Số nguyên |
 | **pr_title** | Tiêu đề PR | Text |
+| **author** | Tác giả PR | Text |
+| **pr_status** | Trạng thái PR | Text (open/closed/merged) |
 | **pr_description_valid** | PR description có đủ keywords không? | `true`/`false` |
-| **is_approved** | PR đã được approve chưa? | `true`/`false` |
 | **review_comment_valid** | Review comment có đủ keywords không? | `true`/`false` |
 | **pr_compliant** | PR tuân thủ đầy đủ quy tắc không? | `true`/`false` |
+| **url** | Link đến PR | URL |
 
 ### Điều Kiện Để `pr_compliant = true`
 
 Một PR được coi là **tuân thủ đầy đủ** (`pr_compliant = true`) khi:
-1. ✅ `pr_description_valid = true` (PR Description có đủ 7 keywords)
-2. ✅ `is_approved = true` (PR đã được approve)
-3. ✅ `review_comment_valid = true` (Review comment có đủ 4 keywords)
+1. ✅ `pr_description_valid = true` (PR Description có ít nhất 3 keywords)
+2. ✅ `review_comment_valid = true` (Review comment có ít nhất 3 keywords)
 
 ### Ví Dụ Dữ Liệu CSV
 
 ```csv
-pr_number,pr_title,pr_description_valid,is_approved,review_comment_valid,pr_compliant
-123,Add 2FA feature,true,true,true,true
-124,Fix login bug,true,true,false,false
-125,Update README,false,true,true,false
-126,Refactor auth module,true,false,false,false
+pr_number,pr_title,author,pr_status,pr_description_valid,review_comment_valid,pr_compliant,url
+123,Add 2FA feature,john-doe,merged,true,true,true,https://github.com/org/repo/pull/123
+124,Fix login bug,jane-smith,closed,true,false,false,https://github.com/org/repo/pull/124
+125,Update README,bob-wilson,open,false,true,false,https://github.com/org/repo/pull/125
+126,Refactor auth module,alice-jones,open,true,true,true,https://github.com/org/repo/pull/126
 ```
 
 ---
@@ -367,30 +345,26 @@ pr_number,pr_title,pr_description_valid,is_approved,review_comment_valid,pr_comp
 
 **A:** Keyword có thể nằm trong câu. Ví dụ: "The **functionality** works well" vẫn được tool tính là có keyword "Functionality".
 
-### Q3: Nếu PR đã approve nhưng review comment không đủ keyword thì kết quả CSV như thế nào?
+### Q3: Nếu PR description hợp lệ nhưng review comment không đủ keyword thì kết quả CSV như thế nào?
 
 **A:** 
-- `is_approved = true`
+- `pr_description_valid = true`
 - `review_comment_valid = false`
 - `pr_compliant = false`
 
 PR sẽ được đánh dấu là **KHÔNG tuân thủ đầy đủ**.
 
-### Q4: Tool có kiểm tra review comment nếu PR chưa approve không?
+### Q4: Nếu PR có nhiều reviewers, tool kiểm tra comment của ai?
 
-**A:** Không. Tool chỉ kiểm tra review comment khi `is_approved = true`. Nếu PR chưa approve, cột `review_comment_valid` sẽ là `false`.
+**A:** Tool sẽ kiểm tra comment của **TẤT CẢ** reviewers. Các comment sẽ được gộp lại và kiểm tra tổng thể xem có đủ ít nhất 3 keywords không.
 
-### Q5: Nếu PR có nhiều reviewers, tool kiểm tra comment của ai?
-
-**A:** Tool sẽ kiểm tra comment của **TẤT CẢ** reviewers đã approve. Chỉ cần **ít nhất 1 reviewer** có comment đủ 4 keywords thì `review_comment_valid = true`.
-
-### Q6: File CSV được lưu ở đâu?
+### Q5: File CSV được lưu ở đâu?
 
 **A:** File CSV sẽ được lưu trong thư mục output mà bạn chỉ định khi chạy tool. Tên file thường có format: `pr_review_report_YYYY-MM-DD.csv`.
 
-### Q7: Làm sao để biết PR nào không đạt chuẩn?
+### Q6: Làm sao để biết PR nào không đạt chuẩn?
 
-**A:** Mở file CSV và lọc các dòng có `pr_compliant = false`. Sau đó kiểm tra các cột `pr_description_valid`, `is_approved`, `review_comment_valid` để biết lý do cụ thể.
+**A:** Mở file CSV và lọc các dòng có `pr_compliant = false`. Sau đó kiểm tra các cột `pr_description_valid` và `review_comment_valid` để biết lý do cụ thể.
 
 ---
 

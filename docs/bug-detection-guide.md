@@ -135,7 +135,7 @@ Khi chọn chế độ **Code Review Compliance**, tool sẽ kiểm tra mức đ
 
 ### 1. Kiểm Tra PR Description (Mô Tả PR)
 
-Tool sẽ quét phần mô tả của PR và kiểm tra xem có chứa **TẤT CẢ** các keyword sau không:
+Tool sẽ quét phần mô tả của PR và kiểm tra xem có chứa **ít nhất 3** trong các keyword sau không:
 
 | Keyword | Ý Nghĩa |
 |---------|---------|
@@ -178,15 +178,9 @@ Người dùng có thể bật/tắt 2FA trong settings.
 - Code formatted với `gofmt`
 ```
 
-### 2. Kiểm Tra Approval Status
+### 2. Kiểm Tra Review Comment
 
-Tool kiểm tra xem PR đã được approve chưa:
-- ✅ PR có **ít nhất 1 reviewer đã approve**
-- ✅ Không có **Request Changes** đang pending
-
-### 3. Kiểm Tra Review Comment (Chỉ Khi PR Đã Approve)
-
-Khi PR đã được approve, tool sẽ quét comment của reviewer và kiểm tra xem có đề cập đến **TẤT CẢ** các khía cạnh sau:
+Tool sẽ quét comment của reviewer và kiểm tra xem có đề cập đến **ít nhất 3** trong các khía cạnh sau:
 
 | Keyword | Ý Nghĩa |
 |---------|---------|
@@ -222,18 +216,19 @@ Khi PR đã được approve, tool sẽ quét comment của reviewer và kiểm 
 Tool sẽ tạo file `pr_rules_report.csv` với các cột:
 
 | Cột | Ý Nghĩa | Giá Trị |
-|-----|---------|---------|
+|-----|---------|------------|
 | **pr_number** | Số PR | Số nguyên |
 | **pr_title** | Tiêu đề PR | Text |
-| **pr_description_valid** | PR description có đủ 7 keywords không? | `true`/`false` |
-| **is_approved** | PR đã được approve chưa? | `true`/`false` |
-| **review_comment_valid** | Review comment có đủ 4 keywords không? | `true`/`false` |
+| **author** | Tác giả PR | Text |
+| **pr_status** | Trạng thái PR | Text (open/closed/merged) |
+| **pr_description_valid** | PR description có đủ keywords không? | `true`/`false` |
+| **review_comment_valid** | Review comment có đủ keywords không? | `true`/`false` |
 | **pr_compliant** | PR tuân thủ đầy đủ quy tắc không? | `true`/`false` |
+| **url** | Link đến PR | URL |
 
 **Điều kiện để `pr_compliant = true`:**
-1. ✅ `pr_description_valid = true` (PR Description có đủ 7 keywords)
-2. ✅ `is_approved = true` (PR đã được approve)
-3. ✅ `review_comment_valid = true` (Review comment có đủ 4 keywords)
+1. ✅ `pr_description_valid = true` (PR Description có ít nhất 3 keywords)
+2. ✅ `review_comment_valid = true` (Review comment có ít nhất 3 keywords)
 
 > [!IMPORTANT]
 > Để biết chi tiết đầy đủ về Code Review Compliance Scan, vui lòng xem tài liệu [`docs/pull-request-rule.md`](docs/pull-request-rule.md)
@@ -354,19 +349,16 @@ Sử dụng cả Bug Detection và Code Review Compliance để có cái nhìn t
 ### Q6: Keyword phải đứng một mình hay có thể nằm trong câu?
 **A:** Keyword có thể nằm trong câu. Ví dụ: "The **functionality** works well" vẫn được tool tính là có keyword "Functionality".
 
-### Q7: Nếu PR đã approve nhưng review comment không đủ keyword thì kết quả như thế nào?
+### Q7: Nếu PR description hợp lệ nhưng review comment không đủ keyword thì kết quả như thế nào?
 **A:** 
-- `is_approved = true`
+- `pr_description_valid = true`
 - `review_comment_valid = false`
 - `pr_compliant = false`
 
 PR sẽ được đánh dấu là **KHÔNG tuân thủ đầy đủ**.
 
-### Q8: Tool có kiểm tra review comment nếu PR chưa approve không?
-**A:** Không. Tool chỉ kiểm tra review comment khi `is_approved = true`. Nếu PR chưa approve, cột `review_comment_valid` sẽ là `false`.
-
-### Q9: Nếu PR có nhiều reviewers, tool kiểm tra comment của ai?
-**A:** Tool sẽ kiểm tra comment của **TẤT CẢ** reviewers đã approve. Chỉ cần **ít nhất 1 reviewer** có comment đủ 4 keywords thì `review_comment_valid = true`.
+### Q8: Nếu PR có nhiều reviewers, tool kiểm tra comment của ai?
+**A:** Tool sẽ kiểm tra comment của **TẤT CẢ** reviewers. Các comment sẽ được gộp lại và kiểm tra tổng thể xem có đủ ít nhất 3 keywords không.
 
 ### Q10: Tôi có thể chạy cả hai chế độ scan cho cùng một repository không?
 **A:** Có, bạn có thể chạy tool nhiều lần với các chế độ khác nhau. Mỗi lần chạy sẽ tạo ra file CSV riêng (`bug_report.csv` hoặc `pr_rules_report.csv`).
@@ -395,10 +387,8 @@ flowchart TD
     CheckLabel -->|Không| NotFoundLabel[❌ Bỏ qua]
     
     ReviewMode --> CheckDesc{Kiểm tra<br/>PR Description}
-    CheckDesc -->|Đủ keywords| CheckApproval{PR đã<br/>Approve?}
+    CheckDesc -->|Đủ keywords| CheckComment{Review Comment<br/>đủ keywords?}
     CheckDesc -->|Thiếu keywords| DescFail[❌ Description Fail]
-    CheckApproval -->|Có| CheckComment{Review Comment<br/>đủ keywords?}
-    CheckApproval -->|Không| ApprovalFail[❌ Chưa Approve]
     CheckComment -->|Có| Compliant[✅ PR Compliant]
     CheckComment -->|Không| CommentFail[❌ Comment Fail]
     
