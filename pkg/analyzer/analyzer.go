@@ -29,6 +29,11 @@ var (
 	}
 )
 
+const (
+	MinKeywordsDescription   = 2 // Number of keywords required in PR description
+	MinKeywordsReviewComment = 2 // Number of keywords required in PR review comment
+)
+
 // BugAnalyzer phân tích PR để detect bug
 type BugAnalyzer struct {
 	bugLabelRegex *regexp.Regexp
@@ -38,7 +43,7 @@ type BugAnalyzer struct {
 type BugResult struct {
 	PR             *github.PullRequestData
 	IsBugRelated   bool
-	DetectionType  string // "bug_review", "keyword", "label", "both"
+	DetectionType  string // "bug_review", "bug"
 	MatchedKeyword string
 	BugCount       int // Số bugs từ bug_review tag
 }
@@ -133,8 +138,8 @@ func (ba *BugAnalyzer) GetBugCount(results []*BugResult) int {
 // PRRuleResult chứa kết quả phân tích PR theo quy tắc code review
 type PRRuleResult struct {
 	PR                    *github.PullRequestData
-	PRDescriptionValid    bool // Có đủ 7 keywords trong description
-	ReviewCommentValid    bool // Review comment có đủ 4 keywords
+	PRDescriptionValid    bool // Có đủ <MaxKeywordsDescription> keywords trong description
+	ReviewCommentValid    bool // Review comment có đủ <MaxKeywordsReviewComment> keywords
 	PRCompliant           bool // Tuân thủ đầy đủ tất cả quy tắc
 	MissingDescKeywords   []string
 	MissingReviewKeywords []string
@@ -148,14 +153,24 @@ func NewPRRuleAnalyzer() *PRRuleAnalyzer {
 	return &PRRuleAnalyzer{}
 }
 
-// CheckKeywordsInText kiểm tra xem text có chứa keywords (case-insensitive)
-// Hỗ trợ cả full keywords và abbreviated tags (D1, DK1, etc)
-// Yêu cầu: >2 keywords (tối thiểu 3 keywords)
+// CheckKeywordsInText checks if the given text contains a sufficient number of specified keywords.
+// It uses regular expressions for specific keywords and falls back to substring matching for others.
+//
+// Parameters:
+//
+//	text: The input string to be analyzed (e.g., PR description).
+//	keywords: A slice of strings representing the keywords to look for.
+//
+// Returns:
+//
+//	bool: True if the number of matched keywords is greater than MinKeywordsDescription, false otherwise.
+//	[]string: A slice of keywords that were not found in the text.
 func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (bool, []string) {
 	textLower := strings.ToLower(text)
 	var missing []string
 
-	// Regex patterns to match keywords and abbreviated tags for description
+	// patterns defines regular expressions for specific keywords and their abbreviated forms.
+	// This allows for flexible matching beyond exact substring comparison.
 	patterns := map[string]*regexp.Regexp{
 		"Description":    regexp.MustCompile(`(?i:description|desc|d\d)`),
 		"Changes Made":   regexp.MustCompile(`(?i:changes made|changes|cm\d|change\d)`),
@@ -173,7 +188,7 @@ func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (
 				missing = append(missing, keyword)
 			}
 		} else {
-			// Fallback to substring matching if pattern not defined
+			// Fallback to substring matching if a specific regex pattern is not defined for the keyword.
 			keywordLower := strings.ToLower(keyword)
 			if !strings.Contains(textLower, keywordLower) {
 				missing = append(missing, keyword)
@@ -181,9 +196,10 @@ func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (
 		}
 	}
 
-	// Allow as long as >2 keywords are found (at least 3 keywords)
+	// Determine if the number of found keywords meets the minimum requirement.
+	// MinKeywordsDescription is typically 3, meaning at greater than 2 keywords are required.
 	matchedCount := len(keywords) - len(missing)
-	return matchedCount > 2, missing
+	return matchedCount > MinKeywordsDescription, missing
 }
 
 // AnalyzePRRule phân tích một PR theo quy tắc code review
@@ -213,8 +229,19 @@ func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *github.PullRequestData) *PRRuleResu
 	return result
 }
 
-// CheckReviewComments kiểm tra review comments có đủ keywords (case-insensitive)
-// Yêu cầu: >2 keywords (tối thiểu 3 keywords), hỗ trợ cả abbreviated tags (F1, S1, etc)
+// CheckReviewComments analyzes the provided review comments to ensure they contain a sufficient number of predefined keywords.
+// It aggregates all comments from reviewers and checks for the presence of keywords,
+// supporting both direct substring matching and regular expression patterns for keywords and their abbreviated tags.
+//
+// Parameters:
+//
+//	reviews []*github.ReviewData: A slice of review data, each potentially containing a comment body.
+//
+// Returns:
+//
+//	bool: True if the aggregated review comments contain more than `MinKeywordsReviewComment` (typically 3, meaning at more than 3)
+//	      of the `ReviewCommentKeywords`, indicating compliance. False otherwise.
+//	[]string: A slice of keywords from `ReviewCommentKeywords` that were not found in the aggregated review comments.
 func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) (bool, []string) {
 	if len(reviews) == 0 {
 		return false, ReviewCommentKeywords
@@ -258,9 +285,9 @@ func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) (bo
 		}
 	}
 
-	// Allow as long as >2 keywords are found (at least 3 keywords)
+	// Allow as long as > MinKeywordsReviewComment keywords are found
 	matchedCount := len(ReviewCommentKeywords) - len(missing)
-	return matchedCount > 2, missing
+	return matchedCount > MinKeywordsReviewComment, missing
 }
 
 // AnalyzePRRules phân tích danh sách PR theo quy tắc code review
