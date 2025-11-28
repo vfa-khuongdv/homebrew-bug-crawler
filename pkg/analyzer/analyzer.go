@@ -30,32 +30,32 @@ var (
 )
 
 const (
-	MinKeywordsDescription   = 2 // Number of keywords required in PR description
-	MinKeywordsReviewComment = 2 // Number of keywords required in PR review comment
+	MinKeywordsDescription   = 3 // Number of keywords required in PR description
+	MinKeywordsReviewComment = 3 // Number of keywords required in PR review comment
 )
 
-// BugAnalyzer phân tích PR để detect bug
+// BugAnalyzer analyzes a PR to detect bug
 type BugAnalyzer struct {
 	bugLabelRegex *regexp.Regexp
 }
 
-// BugResult kết quả phân tích PR
+// BugResult contains the result of analyzing a PR to detect bug
 type BugResult struct {
 	PR             *github.PullRequestData
 	IsBugRelated   bool
 	DetectionType  string // "bug_review", "bug"
 	MatchedKeyword string
-	BugCount       int // Số bugs từ bug_review tag
+	BugCount       int // Number of bugs from bug_review tag
 }
 
-// NewBugAnalyzer khởi tạo BugAnalyzer
+// NewBugAnalyzer initializes a BugAnalyzer
 func NewBugAnalyzer() *BugAnalyzer {
 	return &BugAnalyzer{
 		bugLabelRegex: regexp.MustCompile(`(?i:bug|fix|hotfix|critical|error|issue)`),
 	}
 }
 
-// AnalyzePR phân tích một PR để detect bug
+// AnalyzePR analyzes a PR to detect bug
 func (ba *BugAnalyzer) AnalyzePR(pr *github.PullRequestData, bugType string) *BugResult {
 	result := &BugResult{
 		PR:            pr,
@@ -68,7 +68,7 @@ func (ba *BugAnalyzer) AnalyzePR(pr *github.PullRequestData, bugType string) *Bu
 
 	switch bugType {
 	case "bug_review":
-		// 1. Kiểm tra bug_review tag
+		// Check bug_review tag
 		bugCount, found := ba.extractBugReviewCount(descLower)
 		if found {
 			result.IsBugRelated = true
@@ -78,7 +78,7 @@ func (ba *BugAnalyzer) AnalyzePR(pr *github.PullRequestData, bugType string) *Bu
 		}
 		return result
 	default:
-		// 2. Kiểm tra labels: bug, fix, hotfix, critical, error, issue
+		// Check labels: bug, fix, hotfix, critical, error, issue
 		for _, label := range pr.Labels {
 			if ba.bugLabelRegex.MatchString(label) {
 				result.IsBugRelated = true
@@ -91,15 +91,15 @@ func (ba *BugAnalyzer) AnalyzePR(pr *github.PullRequestData, bugType string) *Bu
 	}
 }
 
-// extractBugReviewCount tìm pattern "bug_review: <number>" trong description
+// extractBugReviewCount extracts the bug count from the description
 func (ba *BugAnalyzer) extractBugReviewCount(desc string) (int, bool) {
-	// Tìm pattern: bug_review: <number>
+	// Find pattern: bug_review: <number>
 	re := regexp.MustCompile(`bug_review:\s*(\d+)`)
 	matches := re.FindStringSubmatch(desc)
 
 	if len(matches) >= 2 {
 		count := 0
-		// Parse number từ string
+		// Parse number from string
 		for _, ch := range matches[1] {
 			if ch >= '0' && ch <= '9' {
 				count = count*10 + int(ch-'0')
@@ -114,7 +114,7 @@ func (ba *BugAnalyzer) extractBugReviewCount(desc string) (int, bool) {
 	return 0, false
 }
 
-// AnalyzePRs phân tích danh sách PR
+// AnalyzePRs analyzes a list of PRs
 func (ba *BugAnalyzer) AnalyzePRs(prs []*github.PullRequestData, bugType string) []*BugResult {
 	results := make([]*BugResult, 0)
 	for _, pr := range prs {
@@ -124,7 +124,7 @@ func (ba *BugAnalyzer) AnalyzePRs(prs []*github.PullRequestData, bugType string)
 	return results
 }
 
-// GetBugCount lấy số lượng PR liên quan bug
+// GetBugCount returns the number of PRs related to bug
 func (ba *BugAnalyzer) GetBugCount(results []*BugResult) int {
 	count := 0
 	for _, result := range results {
@@ -135,20 +135,18 @@ func (ba *BugAnalyzer) GetBugCount(results []*BugResult) int {
 	return count
 }
 
-// PRRuleResult chứa kết quả phân tích PR theo quy tắc code review
+// PRRuleResult contains the result of analyzing a PR based on code review rules
 type PRRuleResult struct {
-	PR                    *github.PullRequestData
-	PRDescriptionValid    bool // Có đủ <MaxKeywordsDescription> keywords trong description
-	ReviewCommentValid    bool // Review comment có đủ <MaxKeywordsReviewComment> keywords
-	PRCompliant           bool // Tuân thủ đầy đủ tất cả quy tắc
-	MissingDescKeywords   []string
-	MissingReviewKeywords []string
+	PR                 *github.PullRequestData
+	PRDescriptionValid bool // PR description contains at least <MinKeywordsDescription> keywords
+	ReviewCommentValid bool // Review comment contains at least <MinKeywordsReviewComment> keywords
+	PRCompliant        bool // PR complies with all rules
 }
 
-// PRRuleAnalyzer phân tích PR theo quy tắc code review
+// PRRuleAnalyzer analyzes a PR based on code review rules
 type PRRuleAnalyzer struct{}
 
-// NewPRRuleAnalyzer khởi tạo PRRuleAnalyzer
+// NewPRRuleAnalyzer creates a new PRRuleAnalyzer
 func NewPRRuleAnalyzer() *PRRuleAnalyzer {
 	return &PRRuleAnalyzer{}
 }
@@ -164,10 +162,8 @@ func NewPRRuleAnalyzer() *PRRuleAnalyzer {
 // Returns:
 //
 //	bool: True if the number of matched keywords is greater than MinKeywordsDescription, false otherwise.
-//	[]string: A slice of keywords that were not found in the text.
-func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (bool, []string) {
+func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) bool {
 	textLower := strings.ToLower(text)
-	var missing []string
 
 	// patterns defines regular expressions for specific keywords and their abbreviated forms.
 	// This allows for flexible matching beyond exact substring comparison.
@@ -182,48 +178,45 @@ func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (
 		"Dependencies":   regexp.MustCompile(`(?i:dependencies|dep\d)`),
 	}
 
+	var matched []string
+
 	for _, keyword := range keywords {
 		if pattern, exists := patterns[keyword]; exists {
-			if !pattern.MatchString(textLower) {
-				missing = append(missing, keyword)
+			if pattern.MatchString(textLower) {
+				matched = append(matched, keyword)
 			}
 		} else {
 			// Fallback to substring matching if a specific regex pattern is not defined for the keyword.
 			keywordLower := strings.ToLower(keyword)
-			if !strings.Contains(textLower, keywordLower) {
-				missing = append(missing, keyword)
+			if strings.Contains(textLower, keywordLower) {
+				matched = append(matched, keyword)
 			}
 		}
 	}
 
 	// Determine if the number of found keywords meets the minimum requirement.
 	// MinKeywordsDescription is typically 3, meaning at greater than 2 keywords are required.
-	matchedCount := len(keywords) - len(missing)
-	return matchedCount > MinKeywordsDescription, missing
+	matchedCount := len(matched)
+	return matchedCount >= MinKeywordsDescription
 }
 
-// AnalyzePRRule phân tích một PR theo quy tắc code review
+// AnalyzePRRule analyzes a PR based on code review rules
 func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *github.PullRequestData) *PRRuleResult {
 	result := &PRRuleResult{
-		PR:                    pr,
-		PRDescriptionValid:    false,
-		ReviewCommentValid:    false,
-		PRCompliant:           false,
-		MissingDescKeywords:   []string{},
-		MissingReviewKeywords: []string{},
+		PR:                 pr,
+		PRDescriptionValid: false,
+		ReviewCommentValid: false,
+		PRCompliant:        false,
 	}
 
-	// Bước 1: Kiểm tra PR Description có đủ keywords
-	valid, missing := pra.CheckKeywordsInText(pr.Description, DescriptionKeywords)
+	// Check if PR description contains at least MinKeywordsDescription keywords
+	valid := pra.CheckKeywordsInText(pr.Description, DescriptionKeywords)
 	result.PRDescriptionValid = valid
-	result.MissingDescKeywords = missing
 
-	// Bước 2: Kiểm tra Review Comment
-	valid, missing = pra.CheckReviewComments(pr.Reviews)
+	// Check if review comments contain at least MinKeywordsReviewComment keywords
 	result.ReviewCommentValid = valid
-	result.MissingReviewKeywords = missing
 
-	// Bước 3: Xác định PR compliant
+	// Determine if the PR complies with all rules
 	result.PRCompliant = result.PRDescriptionValid && result.ReviewCommentValid
 
 	return result
@@ -241,13 +234,12 @@ func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *github.PullRequestData) *PRRuleResu
 //
 //	bool: True if the aggregated review comments contain more than `MinKeywordsReviewComment` (typically 3, meaning at more than 3)
 //	      of the `ReviewCommentKeywords`, indicating compliance. False otherwise.
-//	[]string: A slice of keywords from `ReviewCommentKeywords` that were not found in the aggregated review comments.
-func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) (bool, []string) {
+func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) bool {
 	if len(reviews) == 0 {
-		return false, ReviewCommentKeywords
+		return false
 	}
 
-	// Gộp tất cả comments từ các reviewers
+	// Aggregate all comments from reviewers
 	allComments := ""
 	for _, review := range reviews {
 		if review.CommentBody != "" {
@@ -256,11 +248,12 @@ func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) (bo
 	}
 
 	if allComments == "" {
-		return false, ReviewCommentKeywords
+		return false
 	}
 
 	textLower := strings.ToLower(allComments)
-	var missing []string
+
+	var matched []string
 
 	// Regex patterns to match keywords and abbreviated tags for review comments
 	patterns := map[string]*regexp.Regexp{
@@ -273,24 +266,24 @@ func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) (bo
 
 	for _, keyword := range ReviewCommentKeywords {
 		if pattern, exists := patterns[keyword]; exists {
-			if !pattern.MatchString(textLower) {
-				missing = append(missing, keyword)
+			if pattern.MatchString(textLower) {
+				matched = append(matched, keyword)
 			}
 		} else {
 			// Fallback to substring matching if pattern not defined
 			keywordLower := strings.ToLower(keyword)
-			if !strings.Contains(textLower, keywordLower) {
-				missing = append(missing, keyword)
+			if strings.Contains(textLower, keywordLower) {
+				matched = append(matched, keyword)
 			}
 		}
 	}
 
 	// Allow as long as > MinKeywordsReviewComment keywords are found
-	matchedCount := len(ReviewCommentKeywords) - len(missing)
-	return matchedCount > MinKeywordsReviewComment, missing
+	matchedCount := len(matched)
+	return matchedCount >= MinKeywordsReviewComment
 }
 
-// AnalyzePRRules phân tích danh sách PR theo quy tắc code review
+// AnalyzePRRules analyzes a list of PRs based on code review rules
 func (pra *PRRuleAnalyzer) AnalyzePRRules(prs []*github.PullRequestData) []*PRRuleResult {
 	results := make([]*PRRuleResult, 0)
 	for _, pr := range prs {

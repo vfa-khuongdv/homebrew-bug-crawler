@@ -6,30 +6,30 @@ import (
 	"path/filepath"
 )
 
-// TokenManager quản lý GitHub token
+// TokenManager manages GitHub token
 type TokenManager struct {
 	token string
 }
 
-// NewTokenManager khởi tạo TokenManager
+// NewTokenManager creates a new TokenManager
 func NewTokenManager() *TokenManager {
 	return &TokenManager{}
 }
 
-// GetToken lấy token từ environment hoặc file config
+// GetToken gets token from environment or config file
 func (tm *TokenManager) GetToken(token string) (string, error) {
 	if token != "" {
 		tm.token = token
 		return token, nil
 	}
 
-	// Kiểm tra environment variable
+	// Check environment variable
 	if envToken := os.Getenv("GITHUB_TOKEN"); envToken != "" {
 		tm.token = envToken
 		return envToken, nil
 	}
 
-	// Kiểm tra file config
+	// Check config file
 	configPath := filepath.Join(os.Getenv("HOME"), ".config", "bug-crawler", "token")
 	if data, err := os.ReadFile(configPath); err == nil {
 		token := string(data)
@@ -40,7 +40,7 @@ func (tm *TokenManager) GetToken(token string) (string, error) {
 	return "", fmt.Errorf("token không tìm thấy")
 }
 
-// SaveToken lưu token vào file config
+// SaveToken saves token to config file
 func (tm *TokenManager) SaveToken(token string) error {
 	configDir := filepath.Join(os.Getenv("HOME"), ".config", "bug-crawler")
 	if err := os.MkdirAll(configDir, 0700); err != nil {

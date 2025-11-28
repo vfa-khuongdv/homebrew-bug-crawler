@@ -13,15 +13,15 @@ type Client struct {
 	client *github.Client
 }
 
-// ReviewData chứa thông tin review của một reviewer
+// ReviewData contains review information
 type ReviewData struct {
-	ReviewerLogin string // Người review
+	ReviewerLogin string // Reviewer login
 	State         string // "APPROVED", "COMMENTED", "CHANGES_REQUESTED", "PENDING"
 	SubmittedAt   *time.Time
-	CommentBody   string // Nội dung comment của reviewer
+	CommentBody   string // Review comment body
 }
 
-// PullRequestData chứa thông tin PR cần thiết
+// PullRequestData contains pull request information
 type PullRequestData struct {
 	Number      int
 	Title       string
@@ -32,10 +32,10 @@ type PullRequestData struct {
 	Labels      []string
 	HTMLURL     string
 	Status      string        // "open" or "merged"
-	Reviews     []*ReviewData // Danh sách reviews
+	Reviews     []*ReviewData // List of reviews
 }
 
-// NewClient khởi tạo GitHub client
+// NewClient initializes GitHub client
 func NewClient(token string) (*Client, error) {
 	client := github.NewClient(nil)
 	if token != "" {
@@ -47,7 +47,7 @@ func NewClient(token string) (*Client, error) {
 	}, nil
 }
 
-// GetPullRequests lấy danh sách PR trong khoảng thời gian
+// GetPullRequests retrieves pull requests within a time range
 func (c *Client) GetPullRequests(ctx context.Context, owner, repo string, startDate, endDate time.Time) ([]*PullRequestData, error) {
 	var prs []*PullRequestData
 	opts := &github.PullRequestListOptions{
@@ -106,12 +106,12 @@ func (c *Client) GetPullRequests(ctx context.Context, owner, repo string, startD
 	return prs, nil
 }
 
-// GetPullRequestReviews lấy danh sách reviews của một PR (bao gồm cả issue comments)
+// GetPullRequestReviews retrieves reviews for a pull request (including issue comments)
 func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, prNumber int) ([]*ReviewData, error) {
 	var reviews []*ReviewData
 	opts := &github.ListOptions{PerPage: 100}
 
-	// Lấy reviews từ PR review API
+	// Get reviews from PR review API
 	for {
 		githubReviews, resp, err := c.client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
 		if err != nil {
@@ -134,7 +134,7 @@ func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, 
 		opts.Page = resp.NextPage
 	}
 
-	// Lấy thêm comments từ issue comments API (bao gồm review comments)
+	// Get additional comments from issue comments API (including review comments)
 	issueOpts := &github.IssueListCommentsOptions{
 		ListOptions: github.ListOptions{PerPage: 100},
 	}
@@ -147,7 +147,7 @@ func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, 
 		}
 
 		for _, comment := range comments {
-			// Nếu comment có nội dung, thêm vào reviews
+			// If comment has content, add to reviews
 			if comment.GetBody() != "" {
 				reviewData := &ReviewData{
 					ReviewerLogin: comment.GetUser().GetLogin(),
@@ -168,14 +168,14 @@ func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, 
 	return reviews, nil
 }
 
-// GetPullRequestsWithReviews lấy danh sách PR cùng với review data của từng PR
+// GetPullRequestsWithReviews retrieves pull requests with review data
 func (c *Client) GetPullRequestsWithReviews(ctx context.Context, owner, repo string, startDate, endDate time.Time) ([]*PullRequestData, error) {
 	prs, err := c.GetPullRequests(ctx, owner, repo, startDate, endDate)
 	if err != nil {
 		return nil, err
 	}
 
-	// Lấy reviews cho mỗi PR
+	// Get reviews for each PR
 	for _, pr := range prs {
 		reviews, err := c.GetPullRequestReviews(ctx, owner, repo, pr.Number)
 		if err != nil {
@@ -188,7 +188,7 @@ func (c *Client) GetPullRequestsWithReviews(ctx context.Context, owner, repo str
 	return prs, nil
 }
 
-// VerifyToken kiểm tra token hợp lệ và hiển thị thông tin scopes
+// VerifyToken verifies token validity and displays scope information
 func (c *Client) VerifyToken(ctx context.Context) error {
 	user, _, err := c.client.Users.Get(ctx, "")
 	if err != nil {
@@ -197,7 +197,7 @@ func (c *Client) VerifyToken(ctx context.Context) error {
 
 	fmt.Printf("👤 Đăng nhập thành công với: %s\n", user.GetLogin())
 
-	// Lấy thông tin rate limit
+	// Get rate limit information
 	rateLimits, _, err := c.client.RateLimits(ctx)
 	if err == nil {
 		fmt.Printf("📊 Rate limit: %d/%d requests\n",
@@ -208,7 +208,7 @@ func (c *Client) VerifyToken(ctx context.Context) error {
 	return nil
 }
 
-// RepositoryInfo chứa thông tin repository
+// RepositoryInfo contains repository information
 type RepositoryInfo struct {
 	FullName string
 	Owner    string
@@ -216,7 +216,7 @@ type RepositoryInfo struct {
 	URL      string
 }
 
-// GetUserRepositories lấy danh sách repositories của user
+// GetUserRepositories retrieves user repositories
 func (c *Client) GetUserRepositories(ctx context.Context, username string) ([]*RepositoryInfo, error) {
 	var repos []*RepositoryInfo
 	opts := &github.RepositoryListOptions{
@@ -248,12 +248,12 @@ func (c *Client) GetUserRepositories(ctx context.Context, username string) ([]*R
 	return repos, nil
 }
 
-// GetOrganizationRepositories lấy danh sách repositories của organization
+// GetOrganizationRepositories retrieves organization repositories
 func (c *Client) GetOrganizationRepositories(ctx context.Context, orgName string) ([]*RepositoryInfo, error) {
 	var repos []*RepositoryInfo
 	opts := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{PerPage: 100},
-		Type:        "all", // Lấy cả public, private, internal
+		Type:        "all", // Get all public, private, internal
 	}
 
 	for {
@@ -281,7 +281,7 @@ func (c *Client) GetOrganizationRepositories(ctx context.Context, orgName string
 	return repos, nil
 }
 
-// GetCurrentUserRepositories lấy repositories của user hiện tại
+// GetCurrentUserRepositories retrieves current user repositories
 func (c *Client) GetCurrentUserRepositories(ctx context.Context) ([]*RepositoryInfo, error) {
 	var repos []*RepositoryInfo
 	opts := &github.RepositoryListOptions{
@@ -313,7 +313,7 @@ func (c *Client) GetCurrentUserRepositories(ctx context.Context) ([]*RepositoryI
 	return repos, nil
 }
 
-// GetCurrentUserOrganizations lấy danh sách organizations của user hiện tại
+// GetCurrentUserOrganizations retrieves current user organizations
 func (c *Client) GetCurrentUserOrganizations(ctx context.Context) ([]string, error) {
 	var orgs []string
 	opts := &github.ListOptions{PerPage: 100}
@@ -337,12 +337,12 @@ func (c *Client) GetCurrentUserOrganizations(ctx context.Context) ([]string, err
 	return orgs, nil
 }
 
-// GetAllUserAndOrgRepositories lấy tất cả repositories của user và các organizations
+// GetAllUserAndOrgRepositories retrieves all repositories of user and organizations
 func (c *Client) GetAllUserAndOrgRepositories(ctx context.Context) ([]*RepositoryInfo, error) {
 	var allRepos []*RepositoryInfo
-	repoMap := make(map[string]bool) // Để tránh trùng lặp
+	repoMap := make(map[string]bool) // To avoid duplicates
 
-	// Lấy repositories của user hiện tại
+	// Get user repositories
 	fmt.Println("📦 Quét repositories của user...")
 	userRepos, err := c.GetCurrentUserRepositories(ctx)
 	if err != nil {
@@ -357,7 +357,7 @@ func (c *Client) GetAllUserAndOrgRepositories(ctx context.Context) ([]*Repositor
 		}
 	}
 
-	// Lấy danh sách organizations
+	// Get organizations
 	fmt.Println("🏢 Lấy danh sách organizations...")
 	orgs, err := c.GetCurrentUserOrganizations(ctx)
 	if err != nil {
@@ -365,7 +365,7 @@ func (c *Client) GetAllUserAndOrgRepositories(ctx context.Context) ([]*Repositor
 	}
 	fmt.Printf("   ✓ Tìm được %d organizations\n", len(orgs))
 
-	// Lấy repositories từ mỗi organization
+	// Get repositories from each organization
 	if len(orgs) > 0 {
 		fmt.Println("📦 Quét repositories từ organizations...")
 	}

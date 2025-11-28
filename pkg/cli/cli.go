@@ -12,12 +12,12 @@ import (
 // CLI manages user interactions
 type CLI struct{}
 
-// NewCLI khởi tạo CLI
+// NewCLI creates a new CLI
 func NewCLI() *CLI {
 	return &CLI{}
 }
 
-// PromptToken yêu cầu user nhập GitHub token
+// PromptToken prompts user to enter GitHub token
 func (c *CLI) PromptToken() (string, error) {
 	prompt := promptui.Prompt{
 		Label: "GitHub Token",
@@ -32,7 +32,7 @@ func (c *CLI) PromptToken() (string, error) {
 	return strings.TrimSpace(result), nil
 }
 
-// PromptSaveToken hỏi user có muốn lưu token không
+// PromptSaveToken prompts user to save token to config file
 func (c *CLI) PromptSaveToken() (bool, error) {
 	prompt := promptui.Select{
 		Label: "Lưu token vào file config?",
@@ -43,7 +43,7 @@ func (c *CLI) PromptSaveToken() (bool, error) {
 	return result == "Có", err
 }
 
-// RepositoryScanMode chế độ quét repositories
+// RepositoryScanMode defines repository scan mode
 type RepositoryScanMode int
 
 const (
@@ -53,7 +53,7 @@ const (
 	ScanModeCurrentUser
 )
 
-// PromptRepositoryScanMode yêu cầu user chọn chế độ quét
+// PromptRepositoryScanMode prompts user to select repository scan mode
 func (c *CLI) PromptRepositoryScanMode() (RepositoryScanMode, error) {
 	prompt := promptui.Select{
 		Label: "Chọn cách quét repositories",
@@ -73,7 +73,7 @@ func (c *CLI) PromptRepositoryScanMode() (RepositoryScanMode, error) {
 	return RepositoryScanMode(index), nil
 }
 
-// PromptRepositories yêu cầu user nhập repositories thủ công
+// PromptRepositories prompts user to enter repositories manually
 func (c *CLI) PromptRepositories() ([]string, error) {
 	fmt.Println("\nNhập repositories (format: owner/repo, mỗi repo trên một dòng, nhấn Enter 2 lần để xong):")
 
@@ -108,7 +108,7 @@ func (c *CLI) PromptRepositories() ([]string, error) {
 	return repos, nil
 }
 
-// PromptUsername yêu cầu user nhập username GitHub
+// PromptUsername prompts user to enter GitHub username
 func (c *CLI) PromptUsername() (string, error) {
 	prompt := promptui.Prompt{
 		Label: "GitHub Username",
@@ -122,7 +122,7 @@ func (c *CLI) PromptUsername() (string, error) {
 	return strings.TrimSpace(result), nil
 }
 
-// PromptOrganization yêu cầu user nhập tên organization
+// PromptOrganization prompts user to enter organization name
 func (c *CLI) PromptOrganization() (string, error) {
 	prompt := promptui.Prompt{
 		Label: "Organization Name",
@@ -136,7 +136,7 @@ func (c *CLI) PromptOrganization() (string, error) {
 	return strings.TrimSpace(result), nil
 }
 
-// PromptSelectMultipleRepositories cho phép user chọn nhiều repositories từ danh sách với arrow keys và space
+// PromptSelectMultipleRepositories prompts user to select multiple repositories from list
 func (c *CLI) PromptSelectMultipleRepositories(repos []string) ([]string, error) {
 	if len(repos) == 0 {
 		return nil, fmt.Errorf("không tìm thấy repositories")
@@ -268,7 +268,7 @@ func (c *CLI) PromptSelectMultipleRepositories(repos []string) ([]string, error)
 	}
 }
 
-// simpleSelectRepositories fallback khi tcell không khả dụng
+// simpleSelectRepositories fallback when tcell is not available
 func (c *CLI) simpleSelectRepositories(repos []string) ([]string, error) {
 	if len(repos) == 0 {
 		return nil, fmt.Errorf("không tìm thấy repositories")
@@ -333,7 +333,7 @@ func (c *CLI) simpleSelectRepositories(repos []string) ([]string, error) {
 	}
 }
 
-// PromptSelectRepositories cho phép user chọn repositories từ danh sách
+// PromptSelectRepositories prompts user to select repositories from list
 func (c *CLI) PromptSelectRepositories(repos []string) ([]string, error) {
 	if len(repos) == 0 {
 		return nil, fmt.Errorf("không tìm thấy repositories")
@@ -341,7 +341,7 @@ func (c *CLI) PromptSelectRepositories(repos []string) ([]string, error) {
 
 	fmt.Printf("\nTìm được %d repositories. Chọn repositories (nhập index cách nhau bằng dấu phẩy, hoặc 'all' để chọn tất cả):\n", len(repos))
 
-	// In danh sách repositories
+	// Print list of repositories
 	for i, repo := range repos {
 		fmt.Printf("%3d. %s\n", i+1, repo)
 	}
@@ -357,7 +357,7 @@ func (c *CLI) PromptSelectRepositories(repos []string) ([]string, error) {
 
 	input = strings.TrimSpace(input)
 
-	// Nếu user chọn "all"
+	// If user selects "all"
 	if strings.ToLower(input) == "all" {
 		return repos, nil
 	}
@@ -384,7 +384,7 @@ func (c *CLI) PromptSelectRepositories(repos []string) ([]string, error) {
 	return selected, nil
 }
 
-// PromptDateRange yêu cầu user chọn khoảng thời gian
+// PromptDateRange prompts user to select date range
 func (c *CLI) PromptDateRange() (time.Time, time.Time, error) {
 	fmt.Println("\nChọn khoảng thời gian phân tích (format: YYYY-MM-DD)")
 
@@ -415,7 +415,7 @@ func (c *CLI) PromptDateRange() (time.Time, time.Time, error) {
 	return startDate, endDate.AddDate(0, 0, 1), nil // Thêm 1 ngày để include cả ngày kết thúc
 }
 
-// promptDate helper function để prompt date
+// promptDate helper function to prompt date
 func (c *CLI) promptDate(label string) (string, error) {
 	prompt := promptui.Prompt{
 		Label: label + " (YYYY-MM-DD)",
@@ -424,7 +424,7 @@ func (c *CLI) promptDate(label string) (string, error) {
 	return prompt.Run()
 }
 
-// PromptSelectScanSource cho phép chọn scan user hoặc organizations
+// PromptSelectScanSource prompts user to select scan source
 func (c *CLI) PromptSelectScanSource() (string, error) {
 	prompt := promptui.Select{
 		Label: "Chọn loại để scan",
@@ -445,7 +445,7 @@ func (c *CLI) PromptSelectScanSource() (string, error) {
 	return "org", nil
 }
 
-// PromptSelectScanMode cho phép chọn giữa Bug Scan và PR Rules Scan
+// PromptSelectScanMode prompts user to select scan mode
 func (c *CLI) PromptSelectScanMode() (string, error) {
 	prompt := promptui.Select{
 		Label: "Chọn chế độ scan",
@@ -466,7 +466,7 @@ func (c *CLI) PromptSelectScanMode() (string, error) {
 	return "pr_rules", nil
 }
 
-// PromptSelectBugType cho phép chọn loại bug để scan
+// PromptSelectBugType prompts user to select bug type
 func (c *CLI) PromptSelectBugType() (string, error) {
 	prompt := promptui.Select{
 		Label: "Chọn loại bug để scan",
@@ -487,7 +487,7 @@ func (c *CLI) PromptSelectBugType() (string, error) {
 	return "bug_review", nil
 }
 
-// PromptSelectOrganizations cho phép chọn nhiều organizations với space key
+// PromptSelectOrganizations prompts user to select multiple organizations
 func (c *CLI) PromptSelectOrganizations(organizations []string) ([]string, error) {
 	if len(organizations) == 0 {
 		return nil, fmt.Errorf("không tìm thấy organizations")
@@ -616,7 +616,7 @@ func (c *CLI) PromptSelectOrganizations(organizations []string) ([]string, error
 	}
 }
 
-// simpleSelectFromList fallback khi tcell không khả dụng
+// simpleSelectFromList fallback when tcell is not available
 func (c *CLI) simpleSelectFromList(items []string, itemType string) ([]string, error) {
 	if len(items) == 0 {
 		return nil, fmt.Errorf("không tìm thấy %s", itemType)

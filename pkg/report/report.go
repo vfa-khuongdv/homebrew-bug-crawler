@@ -8,31 +8,31 @@ import (
 	"github.com/bug-crawler/pkg/analyzer"
 )
 
-// Statistics chứa thống kê bug
+// Statistics contains bug statistics
 type Statistics struct {
-	TotalPRsCrawled int // Tổng số PR được crawl
-	TotalPRs        int // Số PR trong kết quả đưa vào (có thể bị lọc)
+	TotalPRsCrawled int // Total number of PRs crawled
+	TotalPRs        int // Number of PRs in the result (may be filtered)
 	BugRelatedPRs   int
 	ByKeyword       int
 	ByLabel         int
 	ByBugReview     int
-	TotalBugCount   int // Tổng số bugs từ bug_review tags
+	TotalBugCount   int // Total number of bugs from bug_review tags
 	BugPercentage   float64
 	DetailedResults []*analyzer.BugResult
 }
 
-// Reporter tạo báo cáo
+// Reporter creates a report
 type Reporter struct{}
 
-// NewReporter khởi tạo Reporter
+// NewReporter initializes Reporter
 func NewReporter() *Reporter {
 	return &Reporter{}
 }
 
-// GenerateStatistics tạo thống kê từ kết quả phân tích
+// GenerateStatistics generates statistics from analysis results
 func (r *Reporter) GenerateStatistics(results []*analyzer.BugResult) *Statistics {
 	stats := &Statistics{
-		TotalPRsCrawled: len(results), // Sẽ cập nhật lại nếu có thông tin từ main
+		TotalPRsCrawled: len(results), // Update if information from main is available
 		TotalPRs:        len(results),
 		DetailedResults: results,
 	}
@@ -60,12 +60,12 @@ func (r *Reporter) GenerateStatistics(results []*analyzer.BugResult) *Statistics
 	stats.ByBugReview = byBugReview
 	stats.TotalBugCount = totalBugCount
 
-	// Không tính BugPercentage ở đây, sẽ tính ở main sau khi cập nhật TotalPRsCrawled
+	// Do not calculate BugPercentage here, will calculate in main after updating TotalPRsCrawled
 
 	return stats
 }
 
-// PrintSummary in tóm tắt thống kê
+// PrintSummary prints summary statistics
 func (r *Reporter) PrintSummary(stats *Statistics) {
 	separator := "============================================================"
 	fmt.Println("\n" + separator)
@@ -85,7 +85,7 @@ func (r *Reporter) PrintSummary(stats *Statistics) {
 	fmt.Println(separator)
 }
 
-// PrintDetails in chi tiết từng PR
+// PrintDetails prints details of each PR
 func (r *Reporter) PrintDetails(stats *Statistics) {
 	if len(stats.DetailedResults) == 0 {
 		return
@@ -125,7 +125,7 @@ func (r *Reporter) PrintDetails(stats *Statistics) {
 	fmt.Println(separator)
 }
 
-// ExportJSON export kết quả dưới dạng JSON (có thể mở rộng sau)
+// ExportCSV exports results to CSV
 func (r *Reporter) ExportCSV(filename string, stats *Statistics) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -188,7 +188,7 @@ func (r *Reporter) ExportPRRulesCSV(filename string, results []*analyzer.PRRuleR
 	return nil
 }
 
-// PrintPRRulesSummary in tóm tắt PR rules compliance
+// PrintPRRulesSummary prints PR rules compliance summary
 func (r *Reporter) PrintPRRulesSummary(results []*analyzer.PRRuleResult) {
 	if len(results) == 0 {
 		return
@@ -221,7 +221,7 @@ func (r *Reporter) PrintPRRulesSummary(results []*analyzer.PRRuleResult) {
 	fmt.Println(separator)
 }
 
-// PrintPRRulesDetails in chi tiết PR rules validation results
+// PrintPRRulesDetails prints PR rules validation results
 func (r *Reporter) PrintPRRulesDetails(results []*analyzer.PRRuleResult) {
 	if len(results) == 0 {
 		return
