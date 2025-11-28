@@ -31,6 +31,7 @@ type PullRequestData struct {
 	MergedAt    *time.Time
 	Labels      []string
 	HTMLURL     string
+	Status      string        // "open" or "merged"
 	Reviews     []*ReviewData // Danh sách reviews
 }
 
@@ -76,6 +77,11 @@ func (c *Client) GetPullRequests(ctx context.Context, owner, repo string, startD
 				mergedAt = &pr.MergedAt.Time
 			}
 
+			status := "open"
+			if !pr.GetMergedAt().IsZero() {
+				status = "merged"
+			}
+
 			prData := &PullRequestData{
 				Number:      pr.GetNumber(),
 				Title:       pr.GetTitle(),
@@ -85,6 +91,7 @@ func (c *Client) GetPullRequests(ctx context.Context, owner, repo string, startD
 				MergedAt:    mergedAt,
 				Labels:      labels,
 				HTMLURL:     pr.GetHTMLURL(),
+				Status:      status,
 			}
 
 			prs = append(prs, prData)
@@ -99,11 +106,12 @@ func (c *Client) GetPullRequests(ctx context.Context, owner, repo string, startD
 	return prs, nil
 }
 
-// GetPullRequestReviews lấy danh sách reviews của một PR
+// GetPullRequestReviews lấy danh sách reviews của một PR (bao gồm cả issue comments)
 func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, prNumber int) ([]*ReviewData, error) {
 	var reviews []*ReviewData
 	opts := &github.ListOptions{PerPage: 100}
 
+	// Lấy reviews từ PR review API
 	for {
 		githubReviews, resp, err := c.client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
 		if err != nil {
@@ -124,6 +132,37 @@ func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, 
 			break
 		}
 		opts.Page = resp.NextPage
+	}
+
+	// Lấy thêm comments từ issue comments API (bao gồm review comments)
+	issueOpts := &github.IssueListCommentsOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+
+	for {
+		comments, resp, err := c.client.Issues.ListComments(ctx, owner, repo, prNumber, issueOpts)
+		if err != nil {
+			fmt.Printf("⚠️  Lỗi khi lấy issue comments từ PR %d: %v\n", prNumber, err)
+			break
+		}
+
+		for _, comment := range comments {
+			// Nếu comment có nội dung, thêm vào reviews
+			if comment.GetBody() != "" {
+				reviewData := &ReviewData{
+					ReviewerLogin: comment.GetUser().GetLogin(),
+					State:         "COMMENTED",
+					SubmittedAt:   &comment.CreatedAt.Time,
+					CommentBody:   comment.GetBody(),
+				}
+				reviews = append(reviews, reviewData)
+			}
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+		issueOpts.Page = resp.NextPage
 	}
 
 	return reviews, nil

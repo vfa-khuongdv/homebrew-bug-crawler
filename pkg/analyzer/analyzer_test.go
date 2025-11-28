@@ -672,68 +672,99 @@ func TestCheckReviewComments(t *testing.T) {
 		wantMissing int
 	}{
 		{
-			name: "All review comment keywords present",
+			name: "All 5 keywords present",
 			reviews: []*github.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
-					CommentBody:   "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive. Code Style is excellent.",
+					CommentBody:   "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive. Code Style is excellent. Readability is clear.",
 				},
 			},
 			wantValid:   true,
 			wantMissing: 0,
 		},
 		{
-			name: "Multiple reviewers with combined coverage",
+			name: "Exactly 3 keywords (minimum required)",
 			reviews: []*github.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
-					CommentBody:   "Functionality is working well. Security is good.",
-				},
-				{
-					ReviewerLogin: "reviewer2",
-					State:         "COMMENTED",
-					CommentBody:   "Error Handling looks solid. Code Style needs improvement.",
+					CommentBody:   "Functionality works well. Security is good. Error Handling is solid.",
 				},
 			},
 			wantValid:   true,
-			wantMissing: 0,
+			wantMissing: 2,
 		},
 		{
-			name: "Missing one keyword in single review",
+			name: "4 out of 5 keywords (more than minimum)",
 			reviews: []*github.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
-					CommentBody:   "Functionality is good. Security is solid. Error Handling is implemented. Performance looks fine.",
+					CommentBody:   "Functionality is working well. Security is good. Error Handling looks solid. Code Style needs improvement.",
 				},
 			},
-			wantValid:   false,
+			wantValid:   true,
 			wantMissing: 1,
 		},
 		{
-			name: "Multiple reviews with missing keywords",
+			name: "Multiple reviewers with combined 3+ keywords",
 			reviews: []*github.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
-					CommentBody:   "Functionality is good.",
+					CommentBody:   "Functionality is working well.",
 				},
 				{
 					ReviewerLogin: "reviewer2",
 					State:         "COMMENTED",
-					CommentBody:   "Security is fine.",
+					CommentBody:   "Security is good. Error Handling is solid.",
+				},
+			},
+			wantValid:   true,
+			wantMissing: 2,
+		},
+		{
+			name: "Only 2 keywords (below minimum)",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "Functionality is good. Security is solid. Performance looks fine.",
 				},
 			},
 			wantValid:   false,
-			wantMissing: 2,
+			wantMissing: 3,
+		},
+		{
+			name: "Only 1 keyword (well below minimum)",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "Functionality is good. Performance and efficiency are great.",
+				},
+			},
+			wantValid:   false,
+			wantMissing: 4,
+		},
+		{
+			name: "No keywords",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "Looks good to me. Great work!",
+				},
+			},
+			wantValid:   false,
+			wantMissing: 5,
 		},
 		{
 			name:        "No reviews",
 			reviews:     []*github.ReviewData{},
 			wantValid:   false,
-			wantMissing: 4,
+			wantMissing: 5,
 		},
 		{
 			name: "Review with empty comment",
@@ -745,51 +776,46 @@ func TestCheckReviewComments(t *testing.T) {
 				},
 			},
 			wantValid:   false,
-			wantMissing: 4,
+			wantMissing: 5,
 		},
 		{
-			name: "Multiple reviews with empty comments",
+			name: "Case insensitive - 3 keywords",
 			reviews: []*github.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
-					CommentBody:   "",
+					CommentBody:   "FUNCTIONALITY is good. SECURITY is solid. ERROR HANDLING is complete.",
 				},
+			},
+			wantValid:   true,
+			wantMissing: 2,
+		},
+		{
+			name: "Mixed case - all 5 keywords",
+			reviews: []*github.ReviewData{
 				{
-					ReviewerLogin: "reviewer2",
+					ReviewerLogin: "reviewer1",
+					State:         "APPROVED",
+					CommentBody:   "functionality is reviewed. Security checked. error handling implemented. code style verified. Readability is excellent.",
+				},
+			},
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name: "Real example from WawaTalk PR #80",
+			reviews: []*github.ReviewData{
+				{
+					ReviewerLogin: "vfa-khuongdv",
 					State:         "COMMENTED",
-					CommentBody:   "",
-				},
-			},
-			wantValid:   false,
-			wantMissing: 4,
-		},
-		{
-			name: "Case insensitive review comments",
-			reviews: []*github.ReviewData{
-				{
-					ReviewerLogin: "reviewer1",
-					State:         "APPROVED",
-					CommentBody:   "FUNCTIONALITY is good. SECURITY is solid. ERROR HANDLING is complete. CODE STYLE is correct.",
+					CommentBody:   "## Review Summary\nAll checklist items **PASS** ✅\n### Checklist Results\n- **F1: Functionality** ✅ – The code correctly implements layout improvements\n- **S1: Security** ✅ – No user input handling changes\n- **EH1: Error Handling** ✅ – No critical external calls added\n- **C1: Code Style/Readability** ✅ – Code follows clean formatting",
 				},
 			},
 			wantValid:   true,
 			wantMissing: 0,
 		},
 		{
-			name: "Mixed case review keywords",
-			reviews: []*github.ReviewData{
-				{
-					ReviewerLogin: "reviewer1",
-					State:         "APPROVED",
-					CommentBody:   "functionality is reviewed. Security checked. error handling implemented. code style verified.",
-				},
-			},
-			wantValid:   true,
-			wantMissing: 0,
-		},
-		{
-			name: "Review with all keywords spread across reviews",
+			name: "Multiple reviews - combined to reach minimum",
 			reviews: []*github.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
@@ -798,34 +824,17 @@ func TestCheckReviewComments(t *testing.T) {
 				},
 				{
 					ReviewerLogin: "reviewer2",
-					State:         "COMMENTED",
+					State:         "APPROVED",
 					CommentBody:   "Security looks good.",
 				},
 				{
 					ReviewerLogin: "reviewer3",
 					State:         "APPROVED",
-					CommentBody:   "Error Handling is comprehensive.",
-				},
-				{
-					ReviewerLogin: "reviewer4",
-					State:         "COMMENTED",
-					CommentBody:   "Code Style follows conventions.",
+					CommentBody:   "Error Handling is solid.",
 				},
 			},
 			wantValid:   true,
-			wantMissing: 0,
-		},
-		{
-			name: "Single review with all keywords",
-			reviews: []*github.ReviewData{
-				{
-					ReviewerLogin: "senior_reviewer",
-					State:         "APPROVED",
-					CommentBody:   "Excellent work! Functionality is robust, Security is well-handled, Error Handling covers edge cases, and Code Style is consistent with project standards.",
-				},
-			},
-			wantValid:   true,
-			wantMissing: 0,
+			wantMissing: 2,
 		},
 	}
 

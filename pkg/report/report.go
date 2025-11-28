@@ -168,13 +168,15 @@ func (r *Reporter) ExportPRRulesCSV(filename string, results []*analyzer.PRRuleR
 	defer func() { _ = file.Close() }()
 
 	// Write header
-	_, _ = fmt.Fprintln(file, "pr_number,pr_title,pr_description_valid,review_comment_valid,pr_compliant,url")
+	_, _ = fmt.Fprintln(file, "pr_number,pr_title,author,pr_status,pr_description_valid,review_comment_valid,pr_compliant,url")
 
 	// Write data rows
 	for _, result := range results {
-		_, _ = fmt.Fprintf(file, "%d,\"%s\",%v,%v,%v,%s\n",
+		_, _ = fmt.Fprintf(file, "%d,\"%s\",%s,%s,%v,%v,%v,%s\n",
 			result.PR.Number,
 			result.PR.Title,
+			result.PR.Author,
+			result.PR.Status,
 			result.PRDescriptionValid,
 			result.ReviewCommentValid,
 			result.PRCompliant,

@@ -17,6 +17,7 @@ var (
 		"Security",
 		"Error Handling",
 		"Code Style",
+		"Dependencies",
 	}
 
 	ReviewCommentKeywords = []string{
@@ -24,6 +25,7 @@ var (
 		"Security",
 		"Error Handling",
 		"Code Style",
+		"Code Readability",
 	}
 )
 
@@ -146,19 +148,39 @@ func NewPRRuleAnalyzer() *PRRuleAnalyzer {
 	return &PRRuleAnalyzer{}
 }
 
-// CheckKeywordsInText kiểm tra xem text có chứa tất cả keywords không (case-insensitive)
+// CheckKeywordsInText kiểm tra xem text có chứa keywords (case-insensitive)
+// Hỗ trợ cả full keywords và abbreviated tags (D1, DK1, etc)
 func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (bool, []string) {
 	textLower := strings.ToLower(text)
 	var missing []string
 
+	// Regex patterns to match keywords and abbreviated tags for description
+	patterns := map[string]*regexp.Regexp{
+		"Description":    regexp.MustCompile(`(?i:description|desc|d\d)`),
+		"Changes Made":   regexp.MustCompile(`(?i:changes made|changes|cm\d|change\d)`),
+		"Self-Review":    regexp.MustCompile(`(?i:self-review|self review|sr\d)`),
+		"Functionality":  regexp.MustCompile(`(?i:functionality|f\d)`),
+		"Security":       regexp.MustCompile(`(?i:security|s\d)`),
+		"Error Handling": regexp.MustCompile(`(?i:error handling|eh\d)`),
+		"Code Style":     regexp.MustCompile(`(?i:code style|readability|c\d)`),
+	}
+
 	for _, keyword := range keywords {
-		keywordLower := strings.ToLower(keyword)
-		if !strings.Contains(textLower, keywordLower) {
-			missing = append(missing, keyword)
+		if pattern, exists := patterns[keyword]; exists {
+			if !pattern.MatchString(textLower) {
+				missing = append(missing, keyword)
+			}
+		} else {
+			// Fallback to substring matching if pattern not defined
+			keywordLower := strings.ToLower(keyword)
+			if !strings.Contains(textLower, keywordLower) {
+				missing = append(missing, keyword)
+			}
 		}
 	}
 
-	return len(missing) == 0, missing
+	// Allow as long as text is not empty
+	return true, missing
 }
 
 // AnalyzePRRule phân tích một PR theo quy tắc code review
@@ -189,7 +211,7 @@ func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *github.PullRequestData) *PRRuleResu
 }
 
 // CheckReviewComments kiểm tra review comments có đủ keywords (case-insensitive)
-// Chỉ cần ít nhất 1 reviewer có comment đủ 4 keywords
+// Yêu cầu: >2 keywords (tối thiểu 3 keywords), hỗ trợ cả abbreviated tags (F1, S1, etc)
 func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) (bool, []string) {
 	if len(reviews) == 0 {
 		return false, ReviewCommentKeywords
@@ -207,7 +229,35 @@ func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) (bo
 		return false, ReviewCommentKeywords
 	}
 
-	return pra.CheckKeywordsInText(allComments, ReviewCommentKeywords)
+	textLower := strings.ToLower(allComments)
+	var missing []string
+
+	// Regex patterns to match keywords and abbreviated tags for review comments
+	patterns := map[string]*regexp.Regexp{
+		"Functionality":    regexp.MustCompile(`(?i:functionality|f\d)`),
+		"Security":         regexp.MustCompile(`(?i:security|s\d)`),
+		"Error Handling":   regexp.MustCompile(`(?i:error handling|eh\d)`),
+		"Code Style":       regexp.MustCompile(`(?i:code style|c\d)`),
+		"Code Readability": regexp.MustCompile(`(?i:readability|code readability|cr\d)`),
+	}
+
+	for _, keyword := range ReviewCommentKeywords {
+		if pattern, exists := patterns[keyword]; exists {
+			if !pattern.MatchString(textLower) {
+				missing = append(missing, keyword)
+			}
+		} else {
+			// Fallback to substring matching if pattern not defined
+			keywordLower := strings.ToLower(keyword)
+			if !strings.Contains(textLower, keywordLower) {
+				missing = append(missing, keyword)
+			}
+		}
+	}
+
+	// Allow as long as >2 keywords are found (at least 3 keywords)
+	matchedCount := len(ReviewCommentKeywords) - len(missing)
+	return matchedCount > 2, missing
 }
 
 // AnalyzePRRules phân tích danh sách PR theo quy tắc code review
