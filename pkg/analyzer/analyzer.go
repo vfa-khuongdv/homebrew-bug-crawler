@@ -210,11 +210,10 @@ func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *github.PullRequestData) *PRRuleResu
 	}
 
 	// Check if PR description contains at least MinKeywordsDescription keywords
-	valid := pra.CheckKeywordsInText(pr.Description, DescriptionKeywords)
-	result.PRDescriptionValid = valid
+	result.PRDescriptionValid = pra.CheckKeywordsInText(pr.Description, DescriptionKeywords)
 
 	// Check if review comments contain at least MinKeywordsReviewComment keywords
-	result.ReviewCommentValid = valid
+	result.ReviewCommentValid = pra.CheckReviewComments(pr.Reviews)
 
 	// Determine if the PR complies with all rules
 	result.PRCompliant = result.PRDescriptionValid && result.ReviewCommentValid
