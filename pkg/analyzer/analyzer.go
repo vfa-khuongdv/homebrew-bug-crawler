@@ -150,6 +150,7 @@ func NewPRRuleAnalyzer() *PRRuleAnalyzer {
 
 // CheckKeywordsInText kiểm tra xem text có chứa keywords (case-insensitive)
 // Hỗ trợ cả full keywords và abbreviated tags (D1, DK1, etc)
+// Yêu cầu: >2 keywords (tối thiểu 3 keywords)
 func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (bool, []string) {
 	textLower := strings.ToLower(text)
 	var missing []string
@@ -163,6 +164,7 @@ func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (
 		"Security":       regexp.MustCompile(`(?i:security|s\d)`),
 		"Error Handling": regexp.MustCompile(`(?i:error handling|eh\d)`),
 		"Code Style":     regexp.MustCompile(`(?i:code style|readability|c\d)`),
+		"Dependencies":   regexp.MustCompile(`(?i:dependencies|dep\d)`),
 	}
 
 	for _, keyword := range keywords {
@@ -179,8 +181,9 @@ func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (
 		}
 	}
 
-	// Return false if any keyword is missing
-	return len(missing) == 0, missing
+	// Allow as long as >2 keywords are found (at least 3 keywords)
+	matchedCount := len(keywords) - len(missing)
+	return matchedCount > 2, missing
 }
 
 // AnalyzePRRule phân tích một PR theo quy tắc code review

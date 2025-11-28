@@ -575,74 +575,137 @@ func TestCheckKeywordsInText(t *testing.T) {
 		wantMissing int
 	}{
 		{
-			name:        "All keywords present",
-			text:        "Description of the work. Changes Made to the code. Self-Review checklist completed. Functionality is working. Security is handled. Error Handling is in place. Code Style follows conventions.",
+			name:        "All keywords present (7/7)",
+			text:        "Description of the work. Changes Made to the code. Self-Review checklist completed. Functionality is working. Security is handled. Error Handling is in place. Code Style follows conventions. Dependencies are managed.",
 			keywords:    DescriptionKeywords,
 			wantValid:   true,
 			wantMissing: 0,
 		},
 		{
-			name:        "Missing one keyword",
-			text:        "Description of the work. Changes Made to the code. Self-Review checklist. Functionality works. Security is good. Error Handling included.",
+			name:        "6 keywords present (>2 required)",
+			text:        "Description of the work. Changes Made to the code. Self-Review checklist. Functionality works. Security is good. Error Handling included. Dependencies managed.",
 			keywords:    DescriptionKeywords,
-			wantValid:   false,
+			wantValid:   true,
 			wantMissing: 1,
 		},
 		{
-			name:        "Missing multiple keywords",
-			text:        "Description provided. Changes Made documented.",
+			name:        "Exactly 3 keywords (minimum required, >2)",
+			text:        "Description provided. Changes Made documented. Functionality tested.",
 			keywords:    DescriptionKeywords,
-			wantValid:   false,
+			wantValid:   true,
 			wantMissing: 5,
 		},
 		{
-			name:        "Case insensitive matching",
-			text:        "DESCRIPTION of work. CHANGES MADE to files. SELF-REVIEW done. FUNCTIONALITY tested. SECURITY checked. ERROR HANDLING implemented. CODE STYLE followed.",
+			name:        "Only 2 keywords (should fail, need >2)",
+			text:        "Description provided. Changes Made documented.",
+			keywords:    DescriptionKeywords,
+			wantValid:   false,
+			wantMissing: 6,
+		},
+		{
+			name:        "Only 1 keyword (should fail)",
+			text:        "Description of the work.",
+			keywords:    DescriptionKeywords,
+			wantValid:   false,
+			wantMissing: 7,
+		},
+		{
+			name:        "Case insensitive matching (7/7)",
+			text:        "DESCRIPTION of work. CHANGES MADE to files. SELF-REVIEW done. FUNCTIONALITY tested. SECURITY checked. ERROR HANDLING implemented. CODE STYLE followed. DEPENDENCIES updated.",
 			keywords:    DescriptionKeywords,
 			wantValid:   true,
 			wantMissing: 0,
 		},
 		{
-			name:        "Mixed case keywords",
-			text:        "description here. Changes Made included. self-review completed. Functionality present. Security evaluated. error handling done. Code Style checked.",
+			name:        "Mixed case keywords (7/7)",
+			text:        "description here. Changes Made included. self-review completed. Functionality present. Security evaluated. error handling done. Code Style checked. Dependencies reviewed.",
 			keywords:    DescriptionKeywords,
 			wantValid:   true,
 			wantMissing: 0,
 		},
 		{
-			name:        "Review comment keywords present",
+			name:        "Review comment all 5 keywords (>2 required)",
+			text:        "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive. Code Style is excellent. Code Readability is clear.",
+			keywords:    ReviewCommentKeywords,
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name:        "Review comment 4 keywords (>2 required)",
 			text:        "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive. Code Style is excellent.",
 			keywords:    ReviewCommentKeywords,
 			wantValid:   true,
-			wantMissing: 0,
-		},
-		{
-			name:        "Review comment missing keyword",
-			text:        "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive. Performance is excellent.",
-			keywords:    ReviewCommentKeywords,
-			wantValid:   false,
 			wantMissing: 1,
 		},
 		{
-			name:        "Empty text",
-			text:        "",
+			name:        "Review comment exactly 3 keywords (minimum)",
+			text:        "Reviewed the functionality carefully. Security looks good. Error Handling is comprehensive.",
+			keywords:    ReviewCommentKeywords,
+			wantValid:   true,
+			wantMissing: 2,
+		},
+		{
+			name:        "Review comment only 2 keywords (should fail)",
+			text:        "Reviewed the functionality carefully. Security looks good.",
+			keywords:    ReviewCommentKeywords,
+			wantValid:   false,
+			wantMissing: 3,
+		},
+		{
+			name:        "Review comment only 1 keyword (should fail)",
+			text:        "Reviewed the functionality carefully.",
 			keywords:    ReviewCommentKeywords,
 			wantValid:   false,
 			wantMissing: 4,
 		},
 		{
-			name:        "Keywords with special characters",
-			text:        "This addresses: Description, Changes Made, Self-Review, Functionality, Security, Error Handling, Code Style.",
+			name:        "Empty text (0 keywords)",
+			text:        "",
+			keywords:    ReviewCommentKeywords,
+			wantValid:   false,
+			wantMissing: 5,
+		},
+		{
+			name:        "Keywords with special characters (7/7)",
+			text:        "This addresses: Description, Changes Made, Self-Review, Functionality, Security, Error Handling, Code Style, Dependencies.",
 			keywords:    DescriptionKeywords,
 			wantValid:   true,
 			wantMissing: 0,
 		},
 		{
-			name:        "Partial keyword match (should fail)",
+			name:        "Abbreviated tags (D1, CM1, SR1, F1, S1, EH1, C1)",
+			text:        "D1: Feature overview. CM1: Updated code. SR1: Self checked. F1: Works well. S1: Secure. EH1: Error handled. C1: Code formatted. DEP1: Deps updated.",
+			keywords:    DescriptionKeywords,
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name:        "Mixed full and abbreviated keywords (7/7)",
+			text:        "Description provided. CM1: Updated. Self-Review done. F1: Working. Security verified. Error Handling solid. Code Style good. Dependencies managed.",
+			keywords:    DescriptionKeywords,
+			wantValid:   true,
+			wantMissing: 0,
+		},
+		{
+			name:        "Partial keyword match only (should fail - need real keywords)",
 			text:        "Describe the change. Change made. Self. Function. Secure. Error. Code.",
 			keywords:    DescriptionKeywords,
 			wantValid:   false,
 			wantMissing: 7,
+		},
+		{
+			name:        "Real-world PR description with 3+ keywords",
+			text:        "Description: Fixed login bug. Changes Made: Updated auth logic. Self-Review: Tested locally. Functionality: Works correctly.",
+			keywords:    DescriptionKeywords,
+			wantValid:   true,
+			wantMissing: 4,
+		},
+		{
+			name:        "Real-world minimal PR (only 2 keywords)",
+			text:        "Description: Update version. Changes Made: Bumped to 1.0.7.",
+			keywords:    DescriptionKeywords,
+			wantValid:   false,
+			wantMissing: 6,
 		},
 	}
 
@@ -652,6 +715,8 @@ func TestCheckKeywordsInText(t *testing.T) {
 
 			if valid != tt.wantValid {
 				t.Errorf("CheckKeywordsInText() valid = %v, want %v", valid, tt.wantValid)
+				t.Logf("Text: %q", tt.text)
+				t.Logf("Missing keywords: %v", missing)
 			}
 
 			if len(missing) != tt.wantMissing {
@@ -869,12 +934,12 @@ func TestAnalyzePRRule(t *testing.T) {
 			pr: &github.PullRequestData{
 				Number:      1,
 				Title:       "Add feature",
-				Description: "Description: Feature overview. Changes Made: Added new component. Self-Review: Tested manually. Functionality: Works as expected. Security: No issues. Error Handling: Try-catch implemented. Code Style: Follows conventions.",
+				Description: "Description: Feature overview. Changes Made: Added new component. Self-Review: Tested manually. Functionality: Works as expected. Security: No issues. Error Handling: Try-catch implemented. Code Style: Follows conventions. Dependencies: Updated.",
 				Reviews: []*github.ReviewData{
 					{
 						ReviewerLogin: "reviewer1",
 						State:         "APPROVED",
-						CommentBody:   "Functionality looks great. Security is solid. Error Handling is comprehensive. Code Style is excellent.",
+						CommentBody:   "Functionality looks great. Security is solid. Error Handling is comprehensive. Code Style is excellent. Code Readability is clear.",
 					},
 				},
 				HTMLURL: "https://github.com/test/pull/1",
@@ -893,7 +958,7 @@ func TestAnalyzePRRule(t *testing.T) {
 					{
 						ReviewerLogin: "reviewer1",
 						State:         "APPROVED",
-						CommentBody:   "Functionality works. Security is good. Error Handling is fine. Code Style is okay.",
+						CommentBody:   "Functionality works. Security is good. Error Handling is fine. Code Style is okay. Code Readability is excellent.",
 					},
 				},
 				HTMLURL: "https://github.com/test/pull/2",
@@ -907,7 +972,7 @@ func TestAnalyzePRRule(t *testing.T) {
 			pr: &github.PullRequestData{
 				Number:      3,
 				Title:       "Refactor code",
-				Description: "Description: Refactoring. Changes Made: Updated logic. Self-Review: Checked. Functionality: Tested. Security: Verified. Error Handling: Handled. Code Style: Formatted.",
+				Description: "Description: Refactoring. Changes Made: Updated logic. Self-Review: Checked. Functionality: Tested. Security: Verified. Error Handling: Handled. Code Style: Formatted. Dependencies: Updated.",
 				Reviews: []*github.ReviewData{
 					{
 						ReviewerLogin: "reviewer1",
@@ -945,7 +1010,7 @@ func TestAnalyzePRRule(t *testing.T) {
 			pr: &github.PullRequestData{
 				Number:      5,
 				Title:       "Add feature",
-				Description: "Description: New feature. Changes Made: Files added. Self-Review: Done. Functionality: Tested. Security: Checked. Error Handling: Implemented. Code Style: Verified.",
+				Description: "Description: New feature. Changes Made: Files added. Self-Review: Done. Functionality: Tested. Security: Checked. Error Handling: Implemented. Code Style: Verified. Dependencies: Updated.",
 				Reviews:     []*github.ReviewData{},
 				HTMLURL:     "https://github.com/test/pull/5",
 			},
