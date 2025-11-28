@@ -7,6 +7,26 @@ import (
 	"github.com/bug-crawler/pkg/github"
 )
 
+// PRRuleKeywords defines required keywords for PR rules
+var (
+	DescriptionKeywords = []string{
+		"Description",
+		"Changes Made",
+		"Self-Review",
+		"Functionality",
+		"Security",
+		"Error Handling",
+		"Code Style",
+	}
+
+	ReviewCommentKeywords = []string{
+		"Functionality",
+		"Security",
+		"Error Handling",
+		"Code Style",
+	}
+)
+
 // BugAnalyzer phân tích PR để detect bug
 type BugAnalyzer struct {
 	bugLabelRegex *regexp.Regexp
@@ -106,4 +126,96 @@ func (ba *BugAnalyzer) GetBugCount(results []*BugResult) int {
 		}
 	}
 	return count
+}
+
+// PRRuleResult chứa kết quả phân tích PR theo quy tắc code review
+type PRRuleResult struct {
+	PR                    *github.PullRequestData
+	PRDescriptionValid    bool // Có đủ 7 keywords trong description
+	ReviewCommentValid    bool // Review comment có đủ 4 keywords
+	PRCompliant           bool // Tuân thủ đầy đủ tất cả quy tắc
+	MissingDescKeywords   []string
+	MissingReviewKeywords []string
+}
+
+// PRRuleAnalyzer phân tích PR theo quy tắc code review
+type PRRuleAnalyzer struct{}
+
+// NewPRRuleAnalyzer khởi tạo PRRuleAnalyzer
+func NewPRRuleAnalyzer() *PRRuleAnalyzer {
+	return &PRRuleAnalyzer{}
+}
+
+// CheckKeywordsInText kiểm tra xem text có chứa tất cả keywords không (case-insensitive)
+func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (bool, []string) {
+	textLower := strings.ToLower(text)
+	var missing []string
+
+	for _, keyword := range keywords {
+		keywordLower := strings.ToLower(keyword)
+		if !strings.Contains(textLower, keywordLower) {
+			missing = append(missing, keyword)
+		}
+	}
+
+	return len(missing) == 0, missing
+}
+
+// AnalyzePRRule phân tích một PR theo quy tắc code review
+func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *github.PullRequestData) *PRRuleResult {
+	result := &PRRuleResult{
+		PR:                    pr,
+		PRDescriptionValid:    false,
+		ReviewCommentValid:    false,
+		PRCompliant:           false,
+		MissingDescKeywords:   []string{},
+		MissingReviewKeywords: []string{},
+	}
+
+	// Bước 1: Kiểm tra PR Description có đủ keywords
+	valid, missing := pra.CheckKeywordsInText(pr.Description, DescriptionKeywords)
+	result.PRDescriptionValid = valid
+	result.MissingDescKeywords = missing
+
+	// Bước 2: Kiểm tra Review Comment
+	valid, missing = pra.CheckReviewComments(pr.Reviews)
+	result.ReviewCommentValid = valid
+	result.MissingReviewKeywords = missing
+
+	// Bước 3: Xác định PR compliant
+	result.PRCompliant = result.PRDescriptionValid && result.ReviewCommentValid
+
+	return result
+}
+
+// CheckReviewComments kiểm tra review comments có đủ keywords (case-insensitive)
+// Chỉ cần ít nhất 1 reviewer có comment đủ 4 keywords
+func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) (bool, []string) {
+	if len(reviews) == 0 {
+		return false, ReviewCommentKeywords
+	}
+
+	// Gộp tất cả comments từ các reviewers
+	allComments := ""
+	for _, review := range reviews {
+		if review.CommentBody != "" {
+			allComments += " " + review.CommentBody
+		}
+	}
+
+	if allComments == "" {
+		return false, ReviewCommentKeywords
+	}
+
+	return pra.CheckKeywordsInText(allComments, ReviewCommentKeywords)
+}
+
+// AnalyzePRRules phân tích danh sách PR theo quy tắc code review
+func (pra *PRRuleAnalyzer) AnalyzePRRules(prs []*github.PullRequestData) []*PRRuleResult {
+	results := make([]*PRRuleResult, 0)
+	for _, pr := range prs {
+		result := pra.AnalyzePRRule(pr)
+		results = append(results, result)
+	}
+	return results
 }

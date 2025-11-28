@@ -68,7 +68,17 @@ func main() {
 	fmt.Println("✓ Token xác thực thành công")
 
 	// 3. Chọn loại scan và lấy repositories
-	fmt.Println("\nStep 3: Chọn Repositories")
+	fmt.Println("\nStep 3: Chọn Chế Độ Scan")
+	fmt.Println("-" + strings.Repeat("-", 40) + "-")
+
+	// Chọn chế độ scan: Bug Detection hay PR Rules Scan
+	scanMode, err := cliTool.PromptSelectScanMode()
+	if err != nil {
+		fmt.Println("❌ Lỗi khi chọn chế độ scan:", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("\nStep 4: Chọn Repositories")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
 	// Chọn loại scan
@@ -184,20 +194,27 @@ func main() {
 
 	fmt.Printf("✓ Sẽ phân tích PR từ %s đến %s\n", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	// 5. Chọn loại bug để scan
-	fmt.Println("\nStep 5: Chọn Loại Bug")
-	fmt.Println("-" + strings.Repeat("-", 40) + "-")
+	// 5. Chọn loại scan dựa trên chế độ
+	var bugType string
+	if scanMode == "bug" {
+		fmt.Println("\nStep 5: Chọn Loại Bug")
+		fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
-	bugType, err := cliTool.PromptSelectBugType()
-	if err != nil {
-		fmt.Println("❌ Lỗi khi chọn loại bug:", err)
-		os.Exit(1)
-	}
+		bugType, err = cliTool.PromptSelectBugType()
+		if err != nil {
+			fmt.Println("❌ Lỗi khi chọn loại bug:", err)
+			os.Exit(1)
+		}
 
-	if bugType == "bug" {
-		fmt.Println("✓ Sẽ scan bug từ labels")
+		if bugType == "bug" {
+			fmt.Println("✓ Sẽ scan bug từ labels")
+		} else {
+			fmt.Println("✓ Sẽ scan bug_review")
+		}
 	} else {
-		fmt.Println("✓ Sẽ scan bug_review")
+		fmt.Println("\nStep 5: Code Review Compliance Scan")
+		fmt.Println("-" + strings.Repeat("-", 40) + "-")
+		fmt.Println("✓ Sẽ scan PR theo quy tắc code review")
 	}
 
 	// 6. Crawler PR
@@ -205,7 +222,9 @@ func main() {
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
 	bugAnalyzer := analyzer.NewBugAnalyzer()
+	prRuleAnalyzer := analyzer.NewPRRuleAnalyzer()
 	allResults := make([]*analyzer.BugResult, 0)
+	allPRRuleResults := make([]*analyzer.PRRuleResult, 0)
 	totalPRsCrawled := 0 // Đếm tổng số PR thực tế
 
 	for _, repoStr := range repos {
@@ -220,7 +239,17 @@ func main() {
 
 		fmt.Printf("Đang lấy PR từ %s/%s...\n", owner, repoName)
 
-		prs, err := ghClient.GetPullRequests(ctx, owner, repoName, startDate, endDate)
+		var prs []*githubclient.PullRequestData
+		var err error
+
+		if scanMode == "pr_rules" {
+			// Lấy PR cùng với review data
+			prs, err = ghClient.GetPullRequestsWithReviews(ctx, owner, repoName, startDate, endDate)
+		} else {
+			// Lấy PR thông thường
+			prs, err = ghClient.GetPullRequests(ctx, owner, repoName, startDate, endDate)
+		}
+
 		if err != nil {
 			fmt.Printf("❌ Lỗi khi lấy PR từ %s/%s: %v\n", owner, repoName, err)
 			continue
@@ -229,27 +258,15 @@ func main() {
 		fmt.Printf("✓ Tìm được %d PR\n", len(prs))
 		totalPRsCrawled += len(prs) // Cộng vào tổng
 
-		// Phân tích PR
-		results := bugAnalyzer.AnalyzePRs(prs, bugType)
-		allResults = append(allResults, results...)
-	}
-
-	// Lọc kết quả theo loại bug đã chọn
-	var filteredResults []*analyzer.BugResult
-	switch bugType {
-	case "bug_review":
-		// Chỉ lấy PR có DetectionType là "bug_review"
-		for _, result := range allResults {
-			if result.DetectionType == "bug_review" {
-				filteredResults = append(filteredResults, result)
-			}
-		}
-	case "bug":
-		// Chỉ lấy PR có DetectionType là "label" (bug từ labels)
-		for _, result := range allResults {
-			if result.DetectionType == "label" {
-				filteredResults = append(filteredResults, result)
-			}
+		// Phân tích PR tùy theo chế độ
+		if scanMode == "pr_rules" {
+			// Phân tích PR theo quy tắc code review
+			results := prRuleAnalyzer.AnalyzePRRules(prs)
+			allPRRuleResults = append(allPRRuleResults, results...)
+		} else {
+			// Phân tích PR theo bug detection
+			results := bugAnalyzer.AnalyzePRs(prs, bugType)
+			allResults = append(allResults, results...)
 		}
 	}
 
@@ -258,22 +275,55 @@ func main() {
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
 	reporter := report.NewReporter()
-	stats := reporter.GenerateStatistics(filteredResults)
-	stats.TotalPRsCrawled = totalPRsCrawled // Ghi nhận tổng số PR thực tế
 
-	// Tính lại BugPercentage dựa trên tổng PR thực tế được crawl
-	if stats.TotalPRsCrawled > 0 {
-		stats.BugPercentage = float64(stats.BugRelatedPRs) * 100 / float64(stats.TotalPRsCrawled)
-	}
+	if scanMode == "pr_rules" {
+		// Báo cáo PR Rules
+		reporter.PrintPRRulesSummary(allPRRuleResults)
+		reporter.PrintPRRulesDetails(allPRRuleResults)
 
-	reporter.PrintSummary(stats)
-	reporter.PrintDetails(stats)
-
-	// 8. Export CSV (optional)
-	if stats.BugRelatedPRs > 0 {
-		csvFile := "bug_report.csv"
-		if err := reporter.ExportCSV(csvFile, stats); err != nil {
+		// 8. Export CSV
+		csvFile := "pr_rules_report.csv"
+		if err := reporter.ExportPRRulesCSV(csvFile, allPRRuleResults); err != nil {
 			fmt.Printf("❌ Lỗi khi export CSV: %v\n", err)
+		}
+	} else {
+		// Lọc kết quả theo loại bug đã chọn
+		var filteredResults []*analyzer.BugResult
+		switch bugType {
+		case "bug_review":
+			// Chỉ lấy PR có DetectionType là "bug_review"
+			for _, result := range allResults {
+				if result.DetectionType == "bug_review" {
+					filteredResults = append(filteredResults, result)
+				}
+			}
+		case "bug":
+			// Chỉ lấy PR có DetectionType là "label" (bug từ labels)
+			for _, result := range allResults {
+				if result.DetectionType == "label" {
+					filteredResults = append(filteredResults, result)
+				}
+			}
+		}
+
+		// Báo cáo Bug Detection
+		stats := reporter.GenerateStatistics(filteredResults)
+		stats.TotalPRsCrawled = totalPRsCrawled // Ghi nhận tổng số PR thực tế
+
+		// Tính lại BugPercentage dựa trên tổng PR thực tế được crawl
+		if stats.TotalPRsCrawled > 0 {
+			stats.BugPercentage = float64(stats.BugRelatedPRs) * 100 / float64(stats.TotalPRsCrawled)
+		}
+
+		reporter.PrintSummary(stats)
+		reporter.PrintDetails(stats)
+
+		// 8. Export CSV (optional)
+		if stats.BugRelatedPRs > 0 {
+			csvFile := "bug_report.csv"
+			if err := reporter.ExportCSV(csvFile, stats); err != nil {
+				fmt.Printf("❌ Lỗi khi export CSV: %v\n", err)
+			}
 		}
 	}
 

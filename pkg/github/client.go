@@ -13,6 +13,14 @@ type Client struct {
 	client *github.Client
 }
 
+// ReviewData chứa thông tin review của một reviewer
+type ReviewData struct {
+	ReviewerLogin string // Người review
+	State         string // "APPROVED", "COMMENTED", "CHANGES_REQUESTED", "PENDING"
+	SubmittedAt   *time.Time
+	CommentBody   string // Nội dung comment của reviewer
+}
+
 // PullRequestData chứa thông tin PR cần thiết
 type PullRequestData struct {
 	Number      int
@@ -23,6 +31,7 @@ type PullRequestData struct {
 	MergedAt    *time.Time
 	Labels      []string
 	HTMLURL     string
+	Reviews     []*ReviewData // Danh sách reviews
 }
 
 // NewClient khởi tạo GitHub client
@@ -85,6 +94,56 @@ func (c *Client) GetPullRequests(ctx context.Context, owner, repo string, startD
 			break
 		}
 		opts.Page = resp.NextPage
+	}
+
+	return prs, nil
+}
+
+// GetPullRequestReviews lấy danh sách reviews của một PR
+func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, prNumber int) ([]*ReviewData, error) {
+	var reviews []*ReviewData
+	opts := &github.ListOptions{PerPage: 100}
+
+	for {
+		githubReviews, resp, err := c.client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi khi lấy reviews từ PR %d: %w", prNumber, err)
+		}
+
+		for _, review := range githubReviews {
+			reviewData := &ReviewData{
+				ReviewerLogin: review.GetUser().GetLogin(),
+				State:         review.GetState(),
+				SubmittedAt:   &review.SubmittedAt.Time,
+				CommentBody:   review.GetBody(),
+			}
+			reviews = append(reviews, reviewData)
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+
+	return reviews, nil
+}
+
+// GetPullRequestsWithReviews lấy danh sách PR cùng với review data của từng PR
+func (c *Client) GetPullRequestsWithReviews(ctx context.Context, owner, repo string, startDate, endDate time.Time) ([]*PullRequestData, error) {
+	prs, err := c.GetPullRequests(ctx, owner, repo, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Lấy reviews cho mỗi PR
+	for _, pr := range prs {
+		reviews, err := c.GetPullRequestReviews(ctx, owner, repo, pr.Number)
+		if err != nil {
+			fmt.Printf("⚠️  Lỗi khi lấy reviews cho PR #%d: %v\n", pr.Number, err)
+			continue
+		}
+		pr.Reviews = reviews
 	}
 
 	return prs, nil

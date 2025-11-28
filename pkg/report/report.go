@@ -158,3 +158,118 @@ func (r *Reporter) ExportCSV(filename string, stats *Statistics) error {
 	fmt.Printf("\nKết quả đã được export vào: %s\n", filename)
 	return nil
 }
+
+// ExportPRRulesCSV export PR rule validation results to CSV
+func (r *Reporter) ExportPRRulesCSV(filename string, results []*analyzer.PRRuleResult) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+
+	// Write header
+	_, _ = fmt.Fprintln(file, "pr_number,pr_title,pr_description_valid,review_comment_valid,pr_compliant,url")
+
+	// Write data rows
+	for _, result := range results {
+		_, _ = fmt.Fprintf(file, "%d,\"%s\",%v,%v,%v,%s\n",
+			result.PR.Number,
+			result.PR.Title,
+			result.PRDescriptionValid,
+			result.ReviewCommentValid,
+			result.PRCompliant,
+			result.PR.HTMLURL,
+		)
+	}
+
+	fmt.Printf("\nKết quả PR rules đã được export vào: %s\n", filename)
+	return nil
+}
+
+// PrintPRRulesSummary in tóm tắt PR rules compliance
+func (r *Reporter) PrintPRRulesSummary(results []*analyzer.PRRuleResult) {
+	if len(results) == 0 {
+		return
+	}
+
+	compliantCount := 0
+	descValidCount := 0
+	reviewCommentValidCount := 0
+
+	for _, result := range results {
+		if result.PRCompliant {
+			compliantCount++
+		}
+		if result.PRDescriptionValid {
+			descValidCount++
+		}
+		if result.ReviewCommentValid {
+			reviewCommentValidCount++
+		}
+	}
+
+	separator := "============================================================"
+	fmt.Println("\n" + separator)
+	fmt.Println("THỐNG KÊ CODE REVIEW COMPLIANCE")
+	fmt.Println(separator)
+	fmt.Printf("Tổng số PR: %d\n", len(results))
+	fmt.Printf("PR Description hợp lệ: %d (%.1f%%)\n", descValidCount, float64(descValidCount)*100/float64(len(results)))
+	fmt.Printf("Review comment hợp lệ: %d (%.1f%%)\n", reviewCommentValidCount, float64(reviewCommentValidCount)*100/float64(len(results)))
+	fmt.Printf("PR tuân thủ đầy đủ: %d (%.1f%%)\n", compliantCount, float64(compliantCount)*100/float64(len(results)))
+	fmt.Println(separator)
+}
+
+// PrintPRRulesDetails in chi tiết PR rules validation results
+func (r *Reporter) PrintPRRulesDetails(results []*analyzer.PRRuleResult) {
+	if len(results) == 0 {
+		return
+	}
+
+	separator := "=========================================================================================================================="
+	fmt.Println("\nCHI TIẾT CÁC PR KHÔNG TUÂN THỦ CHUẨN:")
+	fmt.Println(separator)
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(w, "PR#\tTITLE\tDESC\tREVIEW\tCOMPLIANT")
+
+	count := 0
+	for _, result := range results {
+		if !result.PRCompliant {
+			count++
+			title := result.PR.Title
+			if len(title) > 30 {
+				title = title[:27] + "..."
+			}
+
+			desc := "✓"
+			if !result.PRDescriptionValid {
+				desc = "✗"
+			}
+
+			review := "✓"
+			if !result.ReviewCommentValid {
+				review = "✗"
+			}
+
+			compliant := "✓"
+			if !result.PRCompliant {
+				compliant = "✗"
+			}
+
+			_, _ = fmt.Fprintf(w, "#%d\t%s\t%s\t%s\t%s\n",
+				result.PR.Number,
+				title,
+				desc,
+				review,
+				compliant)
+
+			if count >= 20 {
+				_, _ = fmt.Fprintf(w, "...\t(Còn %d PR không tuân thủ)\t\t\t\n", len(results)-count)
+				break
+			}
+		}
+	}
+
+	_ = w.Flush()
+	fmt.Println(separator)
+}
