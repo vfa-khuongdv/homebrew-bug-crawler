@@ -179,8 +179,8 @@ func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) (
 		}
 	}
 
-	// Allow as long as text is not empty
-	return true, missing
+	// Return false if any keyword is missing
+	return len(missing) == 0, missing
 }
 
 // AnalyzePRRule phân tích một PR theo quy tắc code review
