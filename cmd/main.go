@@ -5,43 +5,81 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/bug-crawler/pkg/analyzer"
 	"github.com/bug-crawler/pkg/auth"
+	"github.com/bug-crawler/pkg/backlog"
+	"github.com/bug-crawler/pkg/bitbucket"
 	"github.com/bug-crawler/pkg/cli"
-	githubclient "github.com/bug-crawler/pkg/github"
+	"github.com/bug-crawler/pkg/github"
+	"github.com/bug-crawler/pkg/platform"
 	"github.com/bug-crawler/pkg/report"
 )
 
 func main() {
-	fmt.Println("🐛 Bug Crawler - GitHub PR Bug Analysis Tool")
+	fmt.Println("🐛 Bug Crawler - Multi-Platform PR Bug Analysis Tool")
 	fmt.Println("==========================================")
 
-	// 1. Quản lý token
+	// Initialize managers
 	tokenMgr := auth.NewTokenManager()
 	cliTool := cli.NewCLI()
+	ctx := context.Background()
 
-	var token string
-	fmt.Println("Step 1: GitHub Token")
+	// Step 0: Select Platform
+	fmt.Println("\nStep 0: Chọn Platform")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
-	// Cố gắng lấy token từ environment hoặc file config
-	if savedToken, err := tokenMgr.GetToken(""); err == nil {
-		fmt.Println("✓ Token đã được tìm thấy từ file config")
+	selectedPlatform, err := cliTool.PromptSelectPlatform()
+	if err != nil {
+		fmt.Println("❌ Lỗi khi chọn platform:", err)
+		os.Exit(1)
+	}
+	fmt.Printf("✓ Đã chọn: %s\n", strings.ToUpper(selectedPlatform))
+
+	// Step 1: Get Token and Platform-Specific Credentials
+	fmt.Println("\nStep 1: Xác Thực")
+	fmt.Println("-" + strings.Repeat("-", 40) + "-")
+
+	var token, username, spaceID string
+
+	// Try to get saved token
+	savedToken, err := tokenMgr.GetTokenForPlatform(selectedPlatform)
+	if err == nil {
+		fmt.Printf("✓ Token đã được tìm thấy từ file config cho %s\n", selectedPlatform)
 		token = savedToken
-	} else {
-		// Yêu cầu user nhập token
+
+		// Get additional credentials if needed
+		if selectedPlatform == "bitbucket" {
+			username, _ = tokenMgr.GetBitbucketUsername()
+		} else if selectedPlatform == "backlog" {
+			spaceID, _ = tokenMgr.GetBacklogSpaceID()
+		}
+	}
+
+	// Prompt for missing credentials
+	if token == "" {
+		var promptLabel string
+		switch selectedPlatform {
+		case "github":
+			promptLabel = "GitHub Personal Access Token"
+		case "bitbucket":
+			promptLabel = "Bitbucket App Password"
+		case "backlog":
+			promptLabel = "Backlog API Key"
+		}
+
+		fmt.Printf("\nNhập %s:\n", promptLabel)
 		inputToken, err := cliTool.PromptToken()
 		if err != nil {
 			fmt.Println("❌ Lỗi khi nhập token:", err)
 			os.Exit(1)
 		}
-
 		token = inputToken
 
-		// Hỏi user có muốn lưu token không
+		// Ask to save token
 		if saveToken, err := cliTool.PromptSaveToken(); err == nil && saveToken {
-			if err := tokenMgr.SaveToken(token); err != nil {
+			if err := tokenMgr.SaveTokenForPlatform(selectedPlatform, token); err != nil {
 				fmt.Println("⚠️  Lỗi khi lưu token:", err)
 			} else {
 				fmt.Println("✓ Token đã được lưu")
@@ -49,51 +87,77 @@ func main() {
 		}
 	}
 
-	// 2. Khởi tạo GitHub client
-	fmt.Println("\nStep 2: Xác thực GitHub")
+	// Get platform-specific additional credentials
+	if selectedPlatform == "bitbucket" && username == "" {
+		username, err = cliTool.PromptBitbucketUsername()
+		if err != nil {
+			fmt.Println("❌ Lỗi khi nhập username:", err)
+			os.Exit(1)
+		}
+		_ = tokenMgr.SaveBitbucketUsername(username)
+	} else if selectedPlatform == "backlog" && spaceID == "" {
+		spaceID, err = cliTool.PromptBacklogSpaceID()
+		if err != nil {
+			fmt.Println("❌ Lỗi khi nhập space ID:", err)
+			os.Exit(1)
+		}
+		_ = tokenMgr.SaveBacklogSpaceID(spaceID)
+	}
+
+	// Step 2: Initialize Platform Client
+	fmt.Println("\nStep 2: Khởi Tạo Client")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
-	ctx := context.Background()
-	ghClient, err := githubclient.NewClient(token)
-	if err != nil {
-		fmt.Println("❌ Lỗi khi khởi tạo GitHub client:", err)
+	var platformClient platform.Platform
+	switch selectedPlatform {
+	case "github":
+		platformClient, err = github.NewClient(token)
+	case "bitbucket":
+		platformClient, err = bitbucket.NewClient(username, token)
+	case "backlog":
+		platformClient, err = backlog.NewClient(spaceID, token)
+	default:
+		fmt.Printf("❌ Platform không được hỗ trợ: %s\n", selectedPlatform)
 		os.Exit(1)
 	}
 
-	// Kiểm tra token hợp lệ
-	if err := ghClient.VerifyToken(ctx); err != nil {
+	if err != nil {
+		fmt.Println("❌ Lỗi khi khởi tạo client:", err)
+		os.Exit(1)
+	}
+
+	// Verify token
+	if err := platformClient.VerifyToken(ctx); err != nil {
 		fmt.Println("❌ Token không hợp lệ hoặc đã hết hạn:", err)
 		os.Exit(1)
 	}
 	fmt.Println("✓ Token xác thực thành công")
 
-	// 3. Chọn loại scan và lấy repositories
+	// Step 3: Select Scan Mode
 	fmt.Println("\nStep 3: Chọn Chế Độ Scan")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
-	// Chọn chế độ scan: Bug Detection hay PR Rules Scan
 	scanMode, err := cliTool.PromptSelectScanMode()
 	if err != nil {
 		fmt.Println("❌ Lỗi khi chọn chế độ scan:", err)
 		os.Exit(1)
 	}
 
+	// Step 4: Select Repositories
 	fmt.Println("\nStep 4: Chọn Repositories")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
-	// Chọn loại scan
 	scanSource, err := cliTool.PromptSelectScanSource()
 	if err != nil {
 		fmt.Println("❌ Lỗi khi chọn loại scan:", err)
 		os.Exit(1)
 	}
 
-	var allRepos []*githubclient.RepositoryInfo
+	var allRepos []*platform.RepositoryInfo
 
 	if scanSource == "user" {
-		// Scan repositories của user hiện tại
 		fmt.Println("📦 Đang quét repositories của bạn...")
-		userRepos, err := ghClient.GetCurrentUserRepositories(ctx)
+		userRepos, err := platformClient.GetCurrentUserRepositories(ctx)
 		if err != nil {
 			fmt.Println("❌ Lỗi khi quét repositories:", err)
 			os.Exit(1)
@@ -101,9 +165,8 @@ func main() {
 		fmt.Printf("✓ Tìm được %d repositories\n", len(userRepos))
 		allRepos = userRepos
 	} else {
-		// Scan repositories của organizations
 		fmt.Println("🏢 Lấy danh sách organizations...")
-		orgs, err := ghClient.GetCurrentUserOrganizations(ctx)
+		orgs, err := platformClient.GetCurrentUserOrganizations(ctx)
 		if err != nil {
 			fmt.Println("❌ Lỗi khi lấy organizations:", err)
 			os.Exit(1)
@@ -116,7 +179,6 @@ func main() {
 
 		fmt.Printf("✓ Tìm được %d organizations\n", len(orgs))
 
-		// Cho phép user chọn organizations
 		fmt.Println("\nChọn organizations để scan:")
 		selectedOrgs, err := cliTool.PromptSelectOrganizations(orgs)
 		if err != nil {
@@ -124,12 +186,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Quét repositories từ các organizations đã chọn
 		fmt.Println("\n📦 Đang quét repositories từ organizations...")
 		repoMap := make(map[string]bool)
 		for _, org := range selectedOrgs {
 			fmt.Printf("🔄 %s...\n", org)
-			orgRepos, err := ghClient.GetOrganizationRepositories(ctx, org)
+			orgRepos, err := platformClient.GetOrganizationRepositories(ctx, org)
 			if err != nil {
 				fmt.Printf("⚠️  Lỗi: %v\n", err)
 				continue
@@ -154,13 +215,11 @@ func main() {
 	fmt.Printf("✓ Tổng cộng: %d repositories\n", len(allRepos))
 	fmt.Println(strings.Repeat("-", 43))
 
-	// Chuyển đổi repository objects thành chuỗi
 	var repoNames []string
 	for _, repo := range allRepos {
 		repoNames = append(repoNames, repo.FullName)
 	}
 
-	// Cho phép user chọn repositories từ danh sách quét được
 	selectedRepos, err := cliTool.PromptSelectMultipleRepositories(repoNames)
 	if err != nil {
 		fmt.Println("❌ Lỗi khi chọn repositories:", err)
@@ -173,7 +232,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Hiển thị danh sách repositories đã chọn
 	fmt.Println("\n" + strings.Repeat("=", 43))
 	fmt.Printf("📋 Repositories đã chọn (%d):\n", len(repos))
 	fmt.Println(strings.Repeat("=", 43))
@@ -182,8 +240,8 @@ func main() {
 	}
 	fmt.Println(strings.Repeat("=", 43))
 
-	// 4. Chọn khoảng thời gian
-	fmt.Println("\nStep 4: Chọn Khoảng Thời Gian")
+	// Step 5: Select Date Range
+	fmt.Println("\nStep 5: Chọn Khoảng Thời Gian")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
 	startDate, endDate, err := cliTool.PromptDateRange()
@@ -194,10 +252,10 @@ func main() {
 
 	fmt.Printf("✓ Sẽ phân tích PR từ %s đến %s\n", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	// 5. Chọn loại scan dựa trên chế độ
+	// Step 6: Select Bug Type (if in bug detection mode)
 	var bugType string
 	if scanMode == "bug" {
-		fmt.Println("\nStep 5: Chọn Loại Bug")
+		fmt.Println("\nStep 6: Chọn Loại Bug")
 		fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
 		bugType, err = cliTool.PromptSelectBugType()
@@ -212,93 +270,100 @@ func main() {
 			fmt.Println("✓ Sẽ scan bug_review")
 		}
 	} else {
-		fmt.Println("\nStep 5: Code Review Compliance Scan")
+		fmt.Println("\nStep 6: Code Review Compliance Scan")
 		fmt.Println("-" + strings.Repeat("-", 40) + "-")
 		fmt.Println("✓ Sẽ scan PR theo quy tắc code review")
 	}
 
-	// 6. Crawler PR
-	fmt.Println("\nStep 6: Crawler PR từ GitHub")
+	// Step 7: Crawler PR
+	fmt.Println("\nStep 7: Crawler PR từ " + strings.ToUpper(selectedPlatform))
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
+	startTime := time.Now()
 	bugAnalyzer := analyzer.NewBugAnalyzer()
 	prRuleAnalyzer := analyzer.NewPRRuleAnalyzer()
 	allResults := make([]*analyzer.BugResult, 0)
 	allPRRuleResults := make([]*analyzer.PRRuleResult, 0)
-	totalPRsCrawled := 0 // Đếm tổng số PR thực tế
+	totalPRsCrawled := 0
 
-	for _, repoStr := range repos {
-		parts := strings.Split(repoStr, "/")
-		if len(parts) != 2 {
-			fmt.Printf("❌ Format repository không hợp lệ: %s\n", repoStr)
+	maxWorkers := 3
+	if len(repos) < 3 {
+		maxWorkers = len(repos)
+	}
+	if len(repos) > 10 {
+		maxWorkers = 5
+	}
+
+	fmt.Printf("🚀 Quét %d repositories với %d workers (song song)...\n", len(repos), maxWorkers)
+
+	scanJobs, err := platformClient.GetPullRequestsFromRepositoriesConcurrent(ctx, repos, startDate, endDate, maxWorkers)
+	if err != nil {
+		fmt.Printf("❌ Lỗi khi quét repositories: %v\n", err)
+	}
+
+	for _, job := range scanJobs {
+		if job.Error != nil {
+			fmt.Printf("❌ Lỗi khi lấy PR từ %s/%s: %v\n", job.Owner, job.RepoName, job.Error)
 			continue
 		}
 
-		owner := parts[0]
-		repoName := parts[1]
+		fmt.Printf("✓ %s/%s: %d PR\n", job.Owner, job.RepoName, len(job.PRData))
+		totalPRsCrawled += len(job.PRData)
 
-		fmt.Printf("Đang lấy PR từ %s/%s...\n", owner, repoName)
+		if scanMode == "pr_rules" && len(job.PRData) > 0 {
+			prNumbers := make([]int, len(job.PRData))
+			for i, pr := range job.PRData {
+				prNumbers[i] = pr.Number
+			}
 
-		var prs []*githubclient.PullRequestData
-		var err error
-
-		if scanMode == "pr_rules" {
-			// Lấy PR cùng với review data
-			prs, err = ghClient.GetPullRequestsWithReviews(ctx, owner, repoName, startDate, endDate)
-		} else {
-			// Lấy PR thông thường
-			prs, err = ghClient.GetPullRequests(ctx, owner, repoName, startDate, endDate)
+			reviewsMap, err := platformClient.GetPullRequestReviewsConcurrent(ctx, job.Owner, job.RepoName, prNumbers, 5)
+			if err != nil {
+				// Silently continue on error
+			} else {
+				for _, pr := range job.PRData {
+					if reviews, exists := reviewsMap[pr.Number]; exists {
+						pr.Reviews = reviews
+					}
+				}
+			}
 		}
 
-		if err != nil {
-			fmt.Printf("❌ Lỗi khi lấy PR từ %s/%s: %v\n", owner, repoName, err)
-			continue
-		}
-
-		fmt.Printf("✓ Tìm được %d PR\n", len(prs))
-		totalPRsCrawled += len(prs) // Cộng vào tổng
-
-		// Phân tích PR tùy theo chế độ
 		if scanMode == "pr_rules" {
-			// Phân tích PR theo quy tắc code review
-			results := prRuleAnalyzer.AnalyzePRRules(prs)
+			results := prRuleAnalyzer.AnalyzePRRules(job.PRData)
 			allPRRuleResults = append(allPRRuleResults, results...)
 		} else {
-			// Phân tích PR theo bug detection
-			results := bugAnalyzer.AnalyzePRs(prs, bugType)
+			results := bugAnalyzer.AnalyzePRs(job.PRData, bugType)
 			allResults = append(allResults, results...)
 		}
 	}
 
-	// 7. Thống kê và in báo cáo
-	fmt.Println("\nStep 7: Thống Kê Kết Quả")
+	elapsedTime := time.Since(startTime)
+	fmt.Printf("✓ Hoàn thành crawl trong: %.2f giây\n", elapsedTime.Seconds())
+
+	// Step 8: Report Results
+	fmt.Println("\nStep 8: Thống Kê Kết Quả")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
 	reporter := report.NewReporter()
 
 	if scanMode == "pr_rules" {
-		// Báo cáo PR Rules
 		reporter.PrintPRRulesSummary(allPRRuleResults)
 		reporter.PrintPRRulesDetails(allPRRuleResults)
 
-		// 8. Export CSV
 		csvFile := "pr_rules_report.csv"
 		if err := reporter.ExportPRRulesCSV(csvFile, allPRRuleResults); err != nil {
 			fmt.Printf("❌ Lỗi khi export CSV: %v\n", err)
 		}
 	} else {
-		// Lọc kết quả theo loại bug đã chọn
 		var filteredResults []*analyzer.BugResult
 		switch bugType {
 		case "bug_review":
-			// Chỉ lấy PR có DetectionType là "bug_review"
 			for _, result := range allResults {
 				if result.DetectionType == "bug_review" {
 					filteredResults = append(filteredResults, result)
 				}
 			}
 		case "bug":
-			// Chỉ lấy PR có DetectionType là "label" (bug từ labels)
 			for _, result := range allResults {
 				if result.DetectionType == "label" {
 					filteredResults = append(filteredResults, result)
@@ -306,11 +371,9 @@ func main() {
 			}
 		}
 
-		// Báo cáo Bug Detection
 		stats := reporter.GenerateStatistics(filteredResults)
-		stats.TotalPRsCrawled = totalPRsCrawled // Ghi nhận tổng số PR thực tế
+		stats.TotalPRsCrawled = totalPRsCrawled
 
-		// Tính lại BugPercentage dựa trên tổng PR thực tế được crawl
 		if stats.TotalPRsCrawled > 0 {
 			stats.BugPercentage = float64(stats.BugRelatedPRs) * 100 / float64(stats.TotalPRsCrawled)
 		}
@@ -318,7 +381,6 @@ func main() {
 		reporter.PrintSummary(stats)
 		reporter.PrintDetails(stats)
 
-		// 8. Export CSV (optional)
 		if stats.BugRelatedPRs > 0 {
 			csvFile := "bug_report.csv"
 			if err := reporter.ExportCSV(csvFile, stats); err != nil {

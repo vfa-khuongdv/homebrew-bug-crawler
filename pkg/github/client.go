@@ -3,8 +3,10 @@ package github
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
+	"github.com/bug-crawler/pkg/platform"
 	"github.com/google/go-github/v56/github"
 )
 
@@ -13,27 +15,11 @@ type Client struct {
 	client *github.Client
 }
 
-// ReviewData contains review information
-type ReviewData struct {
-	ReviewerLogin string // Reviewer login
-	State         string // "APPROVED", "COMMENTED", "CHANGES_REQUESTED", "PENDING"
-	SubmittedAt   *time.Time
-	CommentBody   string // Review comment body
-}
-
-// PullRequestData contains pull request information
-type PullRequestData struct {
-	Number      int
-	Title       string
-	Description string
-	Author      string
-	CreatedAt   time.Time
-	MergedAt    *time.Time
-	Labels      []string
-	HTMLURL     string
-	Status      string        // "open" or "merged"
-	Reviews     []*ReviewData // List of reviews
-}
+// Type aliases for backward compatibility
+type ReviewData = platform.ReviewData
+type PullRequestData = platform.PullRequestData
+type RepositoryInfo = platform.RepositoryInfo
+type RepositoryScanJob = platform.RepositoryScanJob
 
 // NewClient initializes GitHub client
 func NewClient(token string) (*Client, error) {
@@ -82,7 +68,7 @@ func (c *Client) GetPullRequests(ctx context.Context, owner, repo string, startD
 				status = "merged"
 			}
 
-			prData := &PullRequestData{
+			prData := &platform.PullRequestData{
 				Number:      pr.GetNumber(),
 				Title:       pr.GetTitle(),
 				Description: pr.GetBody(),
@@ -119,7 +105,7 @@ func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, 
 		}
 
 		for _, review := range githubReviews {
-			reviewData := &ReviewData{
+			reviewData := &platform.ReviewData{
 				ReviewerLogin: review.GetUser().GetLogin(),
 				State:         review.GetState(),
 				SubmittedAt:   &review.SubmittedAt.Time,
@@ -149,7 +135,7 @@ func (c *Client) GetPullRequestReviews(ctx context.Context, owner, repo string, 
 		for _, comment := range comments {
 			// If comment has content, add to reviews
 			if comment.GetBody() != "" {
-				reviewData := &ReviewData{
+				reviewData := &platform.ReviewData{
 					ReviewerLogin: comment.GetUser().GetLogin(),
 					State:         "COMMENTED",
 					SubmittedAt:   &comment.CreatedAt.Time,
@@ -208,14 +194,6 @@ func (c *Client) VerifyToken(ctx context.Context) error {
 	return nil
 }
 
-// RepositoryInfo contains repository information
-type RepositoryInfo struct {
-	FullName string
-	Owner    string
-	Name     string
-	URL      string
-}
-
 // GetUserRepositories retrieves user repositories
 func (c *Client) GetUserRepositories(ctx context.Context, username string) ([]*RepositoryInfo, error) {
 	var repos []*RepositoryInfo
@@ -230,7 +208,7 @@ func (c *Client) GetUserRepositories(ctx context.Context, username string) ([]*R
 		}
 
 		for _, repo := range githubRepos {
-			repoInfo := &RepositoryInfo{
+			repoInfo := &platform.RepositoryInfo{
 				FullName: repo.GetFullName(),
 				Owner:    repo.GetOwner().GetLogin(),
 				Name:     repo.GetName(),
@@ -391,4 +369,131 @@ func (c *Client) GetAllUserAndOrgRepositories(ctx context.Context) ([]*Repositor
 	}
 
 	return allRepos, nil
+}
+
+// GetPullRequestReviewsConcurrent retrieves reviews for multiple PRs concurrently
+func (c *Client) GetPullRequestReviewsConcurrent(ctx context.Context, owner, repo string, prNumbers []int, maxWorkers int) (map[int][]*ReviewData, error) {
+	if maxWorkers <= 0 {
+		maxWorkers = 5 // Default worker pool size
+	}
+
+	results := make(map[int][]*ReviewData)
+	resultsMutex := &sync.Mutex{}
+
+	// Create semaphore to limit concurrent requests
+	semaphore := make(chan struct{}, maxWorkers)
+	var wg sync.WaitGroup
+
+	for _, prNumber := range prNumbers {
+		wg.Add(1)
+		go func(prNum int) {
+			defer wg.Done()
+			semaphore <- struct{}{}        // Acquire
+			defer func() { <-semaphore }() // Release
+
+			reviews, err := c.GetPullRequestReviews(ctx, owner, repo, prNum)
+			if err != nil {
+				fmt.Printf("⚠️  Error fetching reviews for PR #%d: %v\n", prNum, err)
+				return
+			}
+
+			resultsMutex.Lock()
+			results[prNum] = reviews
+			resultsMutex.Unlock()
+		}(prNumber)
+	}
+
+	wg.Wait()
+	return results, nil
+}
+
+// GetPullRequestsFromRepositoriesConcurrent fetches PRs from multiple repositories concurrently
+func (c *Client) GetPullRequestsFromRepositoriesConcurrent(ctx context.Context, repos []string, startDate, endDate time.Time, maxWorkers int) ([]RepositoryScanJob, error) {
+	if maxWorkers <= 0 {
+		maxWorkers = 3 // Default worker pool size for repo scanning
+	}
+
+	results := make([]RepositoryScanJob, 0)
+	resultsMutex := &sync.Mutex{}
+
+	// Create semaphore to limit concurrent requests
+	semaphore := make(chan struct{}, maxWorkers)
+	var wg sync.WaitGroup
+
+	for _, repoStr := range repos {
+		// Parse repo string
+		var owner, repoName string
+		parts := len(repoStr)
+		for i := 0; i < parts; i++ {
+			if repoStr[i] == '/' {
+				owner = repoStr[:i]
+				repoName = repoStr[i+1:]
+				break
+			}
+		}
+
+		if owner == "" || repoName == "" {
+			results = append(results, platform.RepositoryScanJob{
+				Owner:    owner,
+				RepoName: repoName,
+				Error:    fmt.Errorf("invalid repository format: %s", repoStr),
+			})
+			continue
+		}
+
+		wg.Add(1)
+		go func(o, r string) {
+			defer wg.Done()
+			semaphore <- struct{}{}        // Acquire
+			defer func() { <-semaphore }() // Release
+
+			prs, err := c.GetPullRequests(ctx, o, r, startDate, endDate)
+			job := platform.RepositoryScanJob{
+				Owner:    o,
+				RepoName: r,
+				PRData:   prs,
+				Error:    err,
+			}
+
+			resultsMutex.Lock()
+			results = append(results, job)
+			resultsMutex.Unlock()
+		}(owner, repoName)
+	}
+
+	wg.Wait()
+	return results, nil
+}
+
+// GetPullRequestsWithReviewsConcurrent retrieves PRs with reviews concurrently
+func (c *Client) GetPullRequestsWithReviewsConcurrent(ctx context.Context, owner, repo string, startDate, endDate time.Time, maxWorkers int) ([]*PullRequestData, error) {
+	if maxWorkers <= 0 {
+		maxWorkers = 5
+	}
+
+	prs, err := c.GetPullRequests(ctx, owner, repo, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract PR numbers
+	prNumbers := make([]int, len(prs))
+	for i, pr := range prs {
+		prNumbers[i] = pr.Number
+	}
+
+	// Fetch reviews concurrently
+	reviewsMap, err := c.GetPullRequestReviewsConcurrent(ctx, owner, repo, prNumbers, maxWorkers)
+	if err != nil {
+		return nil, err
+	}
+
+	// Attach reviews to PRs
+	for _, pr := range prs {
+		if reviews, exists := reviewsMap[pr.Number]; exists {
+			pr.Reviews = reviews
+		}
+	}
+
+	return prs, nil
 }

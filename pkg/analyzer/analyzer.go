@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bug-crawler/pkg/github"
+	"github.com/bug-crawler/pkg/platform"
 )
 
 // PRRuleKeywords defines required keywords for PR rules
@@ -41,7 +41,7 @@ type BugAnalyzer struct {
 
 // BugResult contains the result of analyzing a PR to detect bug
 type BugResult struct {
-	PR             *github.PullRequestData
+	PR             *platform.PullRequestData
 	IsBugRelated   bool
 	DetectionType  string // "bug_review", "bug"
 	MatchedKeyword string
@@ -56,7 +56,7 @@ func NewBugAnalyzer() *BugAnalyzer {
 }
 
 // AnalyzePR analyzes a PR to detect bug
-func (ba *BugAnalyzer) AnalyzePR(pr *github.PullRequestData, bugType string) *BugResult {
+func (ba *BugAnalyzer) AnalyzePR(pr *platform.PullRequestData, bugType string) *BugResult {
 	result := &BugResult{
 		PR:            pr,
 		IsBugRelated:  false,
@@ -115,7 +115,7 @@ func (ba *BugAnalyzer) extractBugReviewCount(desc string) (int, bool) {
 }
 
 // AnalyzePRs analyzes a list of PRs
-func (ba *BugAnalyzer) AnalyzePRs(prs []*github.PullRequestData, bugType string) []*BugResult {
+func (ba *BugAnalyzer) AnalyzePRs(prs []*platform.PullRequestData, bugType string) []*BugResult {
 	results := make([]*BugResult, 0)
 	for _, pr := range prs {
 		result := ba.AnalyzePR(pr, bugType)
@@ -137,7 +137,7 @@ func (ba *BugAnalyzer) GetBugCount(results []*BugResult) int {
 
 // PRRuleResult contains the result of analyzing a PR based on code review rules
 type PRRuleResult struct {
-	PR                 *github.PullRequestData
+	PR                 *platform.PullRequestData
 	PRDescriptionValid bool // PR description contains at least <MinKeywordsDescription> keywords
 	ReviewCommentValid bool // Review comment contains at least <MinKeywordsReviewComment> keywords
 	PRCompliant        bool // PR complies with all rules
@@ -201,7 +201,7 @@ func (pra *PRRuleAnalyzer) CheckKeywordsInText(text string, keywords []string) b
 }
 
 // AnalyzePRRule analyzes a PR based on code review rules
-func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *github.PullRequestData) *PRRuleResult {
+func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *platform.PullRequestData) *PRRuleResult {
 	result := &PRRuleResult{
 		PR:                 pr,
 		PRDescriptionValid: false,
@@ -227,13 +227,13 @@ func (pra *PRRuleAnalyzer) AnalyzePRRule(pr *github.PullRequestData) *PRRuleResu
 //
 // Parameters:
 //
-//	reviews []*github.ReviewData: A slice of review data, each potentially containing a comment body.
+//	reviews []*platform.ReviewData: A slice of review data, each potentially containing a comment body.
 //
 // Returns:
 //
 //	bool: True if the aggregated review comments contain more than `MinKeywordsReviewComment` (typically 3, meaning at more than 3)
 //	      of the `ReviewCommentKeywords`, indicating compliance. False otherwise.
-func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) bool {
+func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*platform.ReviewData) bool {
 	if len(reviews) == 0 {
 		return false
 	}
@@ -283,7 +283,7 @@ func (pra *PRRuleAnalyzer) CheckReviewComments(reviews []*github.ReviewData) boo
 }
 
 // AnalyzePRRules analyzes a list of PRs based on code review rules
-func (pra *PRRuleAnalyzer) AnalyzePRRules(prs []*github.PullRequestData) []*PRRuleResult {
+func (pra *PRRuleAnalyzer) AnalyzePRRules(prs []*platform.PullRequestData) []*PRRuleResult {
 	results := make([]*PRRuleResult, 0)
 	for _, pr := range prs {
 		result := pra.AnalyzePRRule(pr)

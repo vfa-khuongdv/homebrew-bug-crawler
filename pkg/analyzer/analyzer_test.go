@@ -3,7 +3,7 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/bug-crawler/pkg/github"
+	"github.com/bug-crawler/pkg/platform"
 )
 
 func TestAnalyzePR_BugReview(t *testing.T) {
@@ -11,7 +11,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		pr          *github.PullRequestData
+		pr          *platform.PullRequestData
 		wantBug     bool
 		wantType    string
 		wantKeyword string
@@ -19,7 +19,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 	}{
 		{
 			name: "bug_review with count",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "This PR fixes bug_review: 3 issues",
 				Labels:      []string{},
@@ -31,7 +31,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 		},
 		{
 			name: "bug_review with single bug",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Fix issue",
 				Description: "bug_review: 1",
 				Labels:      []string{},
@@ -43,7 +43,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 		},
 		{
 			name: "bug_review case insensitive",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Fix",
 				Description: "BUG_REVIEW: 5",
 				Labels:      []string{},
@@ -55,7 +55,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 		},
 		{
 			name: "bug_review with large count",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Major fix",
 				Description: "bug_review: 123",
 				Labels:      []string{},
@@ -67,7 +67,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 		},
 		{
 			name: "bug_review with extra spaces",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Fix",
 				Description: "bug_review:     10",
 				Labels:      []string{},
@@ -79,7 +79,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 		},
 		{
 			name: "bug_review with count 0 - not detected",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Fix",
 				Description: "bug_review: 0",
 				Labels:      []string{},
@@ -90,7 +90,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 		},
 		{
 			name: "bug_review without count - not detected",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Fix",
 				Description: "bug_review:",
 				Labels:      []string{},
@@ -101,7 +101,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 		},
 		{
 			name: "bug_review in title - ignored",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "bug_review: 5",
 				Description: "Some description",
 				Labels:      []string{},
@@ -137,14 +137,14 @@ func TestAnalyzePR_Labels(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		pr          *github.PullRequestData
+		pr          *platform.PullRequestData
 		wantBug     bool
 		wantType    string
 		wantKeyword string
 	}{
 		{
 			name: "bug label",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"bug"},
@@ -155,7 +155,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "fix label",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"enhancement", "fix"},
@@ -166,7 +166,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "hotfix label",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"hotfix"},
@@ -177,7 +177,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "critical label",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"critical"},
@@ -188,7 +188,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "error label",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"error"},
@@ -199,7 +199,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "issue label",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"issue"},
@@ -210,7 +210,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "BUG label case insensitive",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"BUG"},
@@ -221,7 +221,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "multiple labels - first match wins",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"enhancement", "bug", "fix"},
@@ -232,7 +232,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "no matching label",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{"enhancement", "documentation"},
@@ -242,7 +242,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "empty labels",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      []string{},
@@ -252,7 +252,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 		},
 		{
 			name: "nil labels",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "Some description",
 				Labels:      nil,
@@ -282,7 +282,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 func TestAnalyzePR_ExclusiveModes(t *testing.T) {
 	analyzer := NewBugAnalyzer()
 
-	pr := &github.PullRequestData{
+	pr := &platform.PullRequestData{
 		Title:       "Fix",
 		Description: "bug_review: 3",
 		Labels:      []string{"bug", "critical"},
@@ -320,11 +320,11 @@ func TestAnalyzePR_NotBugRelated(t *testing.T) {
 
 	tests := []struct {
 		name string
-		pr   *github.PullRequestData
+		pr   *platform.PullRequestData
 	}{
 		{
 			name: "feature PR",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Add new feature",
 				Description: "Implement user profile page",
 				Labels:      []string{"enhancement"},
@@ -332,7 +332,7 @@ func TestAnalyzePR_NotBugRelated(t *testing.T) {
 		},
 		{
 			name: "documentation PR",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Update README",
 				Description: "Add installation instructions",
 				Labels:      []string{"documentation"},
@@ -340,7 +340,7 @@ func TestAnalyzePR_NotBugRelated(t *testing.T) {
 		},
 		{
 			name: "refactor PR",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Refactor code",
 				Description: "Improve code structure",
 				Labels:      []string{"refactor"},
@@ -348,7 +348,7 @@ func TestAnalyzePR_NotBugRelated(t *testing.T) {
 		},
 		{
 			name: "PR with bug keyword in description but no label (in label mode)",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Some PR",
 				Description: "This fixes a bug in the system",
 				Labels:      []string{},
@@ -356,7 +356,7 @@ func TestAnalyzePR_NotBugRelated(t *testing.T) {
 		},
 		{
 			name: "PR with fix keyword in title only",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "Fix typo in documentation",
 				Description: "Some description",
 				Labels:      []string{},
@@ -364,7 +364,7 @@ func TestAnalyzePR_NotBugRelated(t *testing.T) {
 		},
 		{
 			name: "empty PR",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Title:       "",
 				Description: "",
 				Labels:      []string{},
@@ -393,7 +393,7 @@ func TestAnalyzePR_NotBugRelated(t *testing.T) {
 func TestAnalyzePRs_BugReviewMode(t *testing.T) {
 	analyzer := NewBugAnalyzer()
 
-	prs := []*github.PullRequestData{
+	prs := []*platform.PullRequestData{
 		{
 			Title:       "Fix bug",
 			Description: "bug_review: 2",
@@ -434,7 +434,7 @@ func TestAnalyzePRs_BugReviewMode(t *testing.T) {
 func TestAnalyzePRs_LabelMode(t *testing.T) {
 	analyzer := NewBugAnalyzer()
 
-	prs := []*github.PullRequestData{
+	prs := []*platform.PullRequestData{
 		{
 			Title:       "Fix bug",
 			Description: "bug_review: 2",
@@ -475,7 +475,7 @@ func TestAnalyzePRs_LabelMode(t *testing.T) {
 func TestAnalyzePRs_EmptyList(t *testing.T) {
 	analyzer := NewBugAnalyzer()
 
-	results := analyzer.AnalyzePRs([]*github.PullRequestData{}, "label")
+	results := analyzer.AnalyzePRs([]*platform.PullRequestData{}, "label")
 
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results, got %d", len(results))
@@ -706,12 +706,12 @@ func TestCheckReviewComments(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		reviews   []*github.ReviewData
+		reviews   []*platform.ReviewData
 		wantValid bool
 	}{
 		{
 			name: "All 5 keywords present",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -722,7 +722,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "Exactly 3 keywords (minimum required)",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -733,7 +733,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "4 out of 5 keywords (more than minimum)",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -744,7 +744,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "Multiple reviewers with combined 3+ keywords",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -760,7 +760,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "Only 2 keywords (below minimum)",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -771,7 +771,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "Only 1 keyword (well below minimum)",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -782,7 +782,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "No keywords",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -793,12 +793,12 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name:      "No reviews",
-			reviews:   []*github.ReviewData{},
+			reviews:   []*platform.ReviewData{},
 			wantValid: false,
 		},
 		{
 			name: "Review with empty comment",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -809,7 +809,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "Case insensitive - 3 keywords",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -820,7 +820,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "Mixed case - all 5 keywords",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -831,7 +831,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "Real example from WawaTalk PR #80",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "vfa-khuongdv",
 					State:         "COMMENTED",
@@ -842,7 +842,7 @@ func TestCheckReviewComments(t *testing.T) {
 		},
 		{
 			name: "Multiple reviews - combined to reach minimum",
-			reviews: []*github.ReviewData{
+			reviews: []*platform.ReviewData{
 				{
 					ReviewerLogin: "reviewer1",
 					State:         "APPROVED",
@@ -879,18 +879,18 @@ func TestAnalyzePRRule(t *testing.T) {
 
 	tests := []struct {
 		name                   string
-		pr                     *github.PullRequestData
+		pr                     *platform.PullRequestData
 		wantDescriptionValid   bool
 		wantReviewCommentValid bool
 		wantCompliant          bool
 	}{
 		{
 			name: "Fully compliant PR",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Number:      1,
 				Title:       "Add feature",
 				Description: "Description: Feature overview. Changes Made: Added new component. Self-Review: Tested manually. Functionality: Works as expected. Security: No issues. Error Handling: Try-catch implemented. Code Style: Follows conventions. Dependencies: Updated.",
-				Reviews: []*github.ReviewData{
+				Reviews: []*platform.ReviewData{
 					{
 						ReviewerLogin: "reviewer1",
 						State:         "APPROVED",
@@ -905,11 +905,11 @@ func TestAnalyzePRRule(t *testing.T) {
 		},
 		{
 			name: "Missing description keywords",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Number:      2,
 				Title:       "Fix bug",
 				Description: "This is a simple PR without proper keywords",
-				Reviews: []*github.ReviewData{
+				Reviews: []*platform.ReviewData{
 					{
 						ReviewerLogin: "reviewer1",
 						State:         "APPROVED",
@@ -924,11 +924,11 @@ func TestAnalyzePRRule(t *testing.T) {
 		},
 		{
 			name: "Missing review comment keywords",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Number:      3,
 				Title:       "Refactor code",
 				Description: "Description: Refactoring. Changes Made: Updated logic. Self-Review: Checked. Functionality: Tested. Security: Verified. Error Handling: Handled. Code Style: Formatted. Dependencies: Updated.",
-				Reviews: []*github.ReviewData{
+				Reviews: []*platform.ReviewData{
 					{
 						ReviewerLogin: "reviewer1",
 						State:         "APPROVED",
@@ -943,11 +943,11 @@ func TestAnalyzePRRule(t *testing.T) {
 		},
 		{
 			name: "Missing both description and review keywords",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Number:      4,
 				Title:       "Update docs",
 				Description: "Just updated the documentation file",
-				Reviews: []*github.ReviewData{
+				Reviews: []*platform.ReviewData{
 					{
 						ReviewerLogin: "reviewer1",
 						State:         "APPROVED",
@@ -962,11 +962,11 @@ func TestAnalyzePRRule(t *testing.T) {
 		},
 		{
 			name: "No reviews",
-			pr: &github.PullRequestData{
+			pr: &platform.PullRequestData{
 				Number:      5,
 				Title:       "Add feature",
 				Description: "Description: New feature. Changes Made: Files added. Self-Review: Done. Functionality: Tested. Security: Checked. Error Handling: Implemented. Code Style: Verified. Dependencies: Updated.",
-				Reviews:     []*github.ReviewData{},
+				Reviews:     []*platform.ReviewData{},
 				HTMLURL:     "https://github.com/test/pull/5",
 			},
 			wantDescriptionValid:   true,

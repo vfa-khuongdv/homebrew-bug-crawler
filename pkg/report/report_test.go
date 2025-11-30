@@ -6,14 +6,14 @@ import (
 	"testing"
 
 	"github.com/bug-crawler/pkg/analyzer"
-	"github.com/bug-crawler/pkg/github"
+	"github.com/bug-crawler/pkg/platform"
 )
 
 func TestExportCSV(t *testing.T) {
 	// Setup test data
 	results := []*analyzer.BugResult{
 		{
-			PR: &github.PullRequestData{
+			PR: &platform.PullRequestData{
 				Number:  1,
 				Title:   "Fix bug 1",
 				Author:  "user1",
@@ -25,7 +25,7 @@ func TestExportCSV(t *testing.T) {
 			BugCount:       0,
 		},
 		{
-			PR: &github.PullRequestData{
+			PR: &platform.PullRequestData{
 				Number:  2,
 				Title:   "Review bug fix",
 				Author:  "user2",
@@ -37,7 +37,7 @@ func TestExportCSV(t *testing.T) {
 			BugCount:       3,
 		},
 		{
-			PR: &github.PullRequestData{
+			PR: &platform.PullRequestData{
 				Number:  3,
 				Title:   "Feature 1",
 				Author:  "user3",

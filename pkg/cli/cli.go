@@ -487,6 +487,54 @@ func (c *CLI) PromptSelectBugType() (string, error) {
 	return "bug_review", nil
 }
 
+// PromptSelectPlatform prompts user to select Git platform
+func (c *CLI) PromptSelectPlatform() (string, error) {
+	prompt := promptui.Select{
+		Label: "Chọn Git platform",
+		Items: []string{
+			"1. GitHub",
+			"2. Bitbucket",
+			"3. Backlog",
+		},
+	}
+
+	index, _, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	platforms := []string{"github", "bitbucket", "backlog"}
+	return platforms[index], nil
+}
+
+// PromptBacklogSpaceID prompts for Backlog space ID
+func (c *CLI) PromptBacklogSpaceID() (string, error) {
+	prompt := promptui.Prompt{
+		Label: "Backlog Space ID (e.g., yourcompany)",
+	}
+
+	result, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(result), nil
+}
+
+// PromptBitbucketUsername prompts for Bitbucket username
+func (c *CLI) PromptBitbucketUsername() (string, error) {
+	prompt := promptui.Prompt{
+		Label: "Bitbucket Username",
+	}
+
+	result, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(result), nil
+}
+
 // PromptSelectOrganizations prompts user to select multiple organizations
 func (c *CLI) PromptSelectOrganizations(organizations []string) ([]string, error) {
 	if len(organizations) == 0 {
