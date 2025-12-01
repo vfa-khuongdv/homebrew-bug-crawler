@@ -22,18 +22,23 @@ type Client struct {
 }
 
 // NewClient initializes Backlog client
-func NewClient(spaceID, apiKey string) (*Client, error) {
+func NewClient(spaceID, apiKey, domain string) (*Client, error) {
 	if spaceID == "" || apiKey == "" {
 		return nil, fmt.Errorf("space ID and API key are required")
+	}
+
+	if domain == "" {
+		domain = "backlog.com"
 	}
 
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		spaceID:    spaceID,
 		apiKey:     apiKey,
-		baseURL:    fmt.Sprintf("https://%s.backlog.com/api/v2", spaceID),
+		baseURL:    fmt.Sprintf("https://%s.%s/api/v2", spaceID, domain),
 	}, nil
 }
+
 
 // doRequest performs an HTTP request with API key authentication
 func (c *Client) doRequest(ctx context.Context, method, path string, params url.Values) ([]byte, error) {
@@ -43,7 +48,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 	params.Set("apiKey", c.apiKey)
 
 	urlPath := fmt.Sprintf("%s%s?%s", c.baseURL, path, params.Encode())
-
+	
 	req, err := http.NewRequestWithContext(ctx, method, urlPath, nil)
 	if err != nil {
 		return nil, err
@@ -67,6 +72,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 
 // VerifyToken verifies API key validity
 func (c *Client) VerifyToken(ctx context.Context) error {
+	fmt.Printf("🔗 Connecting to: %s\n", c.baseURL)
+	
 	body, err := c.doRequest(ctx, "GET", "/space", nil)
 	if err != nil {
 		return err
@@ -84,6 +91,7 @@ func (c *Client) VerifyToken(ctx context.Context) error {
 	fmt.Printf("👤 Đăng nhập thành công với space: %s (%s)\n", space.SpaceKey, space.Name)
 	return nil
 }
+
 
 // GetCurrentUserRepositories retrieves Git repositories from all projects
 func (c *Client) GetCurrentUserRepositories(ctx context.Context) ([]*platform.RepositoryInfo, error) {
@@ -323,6 +331,7 @@ func (c *Client) GetPullRequestsFromRepositoriesConcurrent(ctx context.Context, 
 	results := make([]platform.RepositoryScanJob, 0)
 	resultsMutex := &sync.Mutex{}
 
+	// Limit number of concurrent workers
 	semaphore := make(chan struct{}, maxWorkers)
 	var wg sync.WaitGroup
 
@@ -346,10 +355,14 @@ func (c *Client) GetPullRequestsFromRepositoriesConcurrent(ctx context.Context, 
 			continue
 		}
 
+		// Add to wait group
 		wg.Add(1)
 		go func(pk, rn string) {
+			// Wait for semaphore
 			defer wg.Done()
+			// Limit number of concurrent workers
 			semaphore <- struct{}{}
+			// Release semaphore when done
 			defer func() { <-semaphore }()
 
 			prs, err := c.GetPullRequests(ctx, pk, rn, startDate, endDate)
@@ -361,8 +374,11 @@ func (c *Client) GetPullRequestsFromRepositoriesConcurrent(ctx context.Context, 
 				Error:    err,
 			}
 
+			// Lock results mutex
 			resultsMutex.Lock()
+			// Append job to results
 			results = append(results, job)
+			// Unlock results mutex
 			resultsMutex.Unlock()
 		}(projectKey, repoName)
 	}

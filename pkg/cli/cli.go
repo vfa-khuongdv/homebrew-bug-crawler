@@ -521,6 +521,40 @@ func (c *CLI) PromptBacklogSpaceID() (string, error) {
 	return strings.TrimSpace(result), nil
 }
 
+// PromptBacklogApiKey prompts user to enter Backlog API Key with specific instructions
+func (c *CLI) PromptBacklogApiKey() (string, error) {
+	fmt.Println("\n⚠️  LƯU Ý QUAN TRỌNG:")
+	fmt.Println("Vui lòng sử dụng 'API Key' (từ Personal Settings -> API), KHÔNG PHẢI 'Git Password'.")
+	fmt.Println("Link: https://[your-space].backlog.com/EditApiSettings.action")
+	
+	prompt := promptui.Prompt{
+		Label: "Backlog API Key",
+		Mask:  '*',
+	}
+
+	result, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(result), nil
+}
+
+// PromptBacklogDomain prompts user to select Backlog domain
+func (c *CLI) PromptBacklogDomain() (string, error) {
+	prompt := promptui.Select{
+		Label: "Chọn Backlog Domain",
+		Items: []string{"backlog.com", "backlog.jp"},
+	}
+
+	_, result, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
+}
+
 // PromptBitbucketUsername prompts for Bitbucket username
 func (c *CLI) PromptBitbucketUsername() (string, error) {
 	prompt := promptui.Prompt{

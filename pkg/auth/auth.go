@@ -93,3 +93,22 @@ func (tm *TokenManager) SaveBitbucketUsername(username string) error {
 	usernameFile := filepath.Join(tm.configDir, "bitbucket_username")
 	return os.WriteFile(usernameFile, []byte(username), 0600)
 }
+
+// GetBacklogDomain gets Backlog domain
+func (tm *TokenManager) GetBacklogDomain() (string, error) {
+	domainFile := filepath.Join(tm.configDir, "backlog_domain")
+	if data, err := os.ReadFile(domainFile); err == nil {
+		return string(data), nil
+	}
+	return "", fmt.Errorf("backlog domain không tìm thấy")
+}
+
+// SaveBacklogDomain saves Backlog domain
+func (tm *TokenManager) SaveBacklogDomain(domain string) error {
+	if err := os.MkdirAll(tm.configDir, 0700); err != nil {
+		return err
+	}
+
+	domainFile := filepath.Join(tm.configDir, "backlog_domain")
+	return os.WriteFile(domainFile, []byte(domain), 0600)
+}

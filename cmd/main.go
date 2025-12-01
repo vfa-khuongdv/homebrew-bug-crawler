@@ -41,7 +41,7 @@ func main() {
 	fmt.Println("\nStep 1: Xác Thực")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
-	var token, username, spaceID string
+	var token, username, spaceID, domain string
 
 	// Try to get saved token
 	savedToken, err := tokenMgr.GetTokenForPlatform(selectedPlatform)
@@ -54,6 +54,7 @@ func main() {
 			username, _ = tokenMgr.GetBitbucketUsername()
 		} else if selectedPlatform == "backlog" {
 			spaceID, _ = tokenMgr.GetBacklogSpaceID()
+			domain, _ = tokenMgr.GetBacklogDomain()
 		}
 	}
 
@@ -70,7 +71,16 @@ func main() {
 		}
 
 		fmt.Printf("\nNhập %s:\n", promptLabel)
-		inputToken, err := cliTool.PromptToken()
+		
+		var inputToken string
+		var err error
+		
+		if selectedPlatform == "backlog" {
+			inputToken, err = cliTool.PromptBacklogApiKey()
+		} else {
+			inputToken, err = cliTool.PromptToken()
+		}
+		
 		if err != nil {
 			fmt.Println("❌ Lỗi khi nhập token:", err)
 			os.Exit(1)
@@ -104,6 +114,15 @@ func main() {
 		_ = tokenMgr.SaveBacklogSpaceID(spaceID)
 	}
 
+	if selectedPlatform == "backlog" && domain == "" {
+		domain, err = cliTool.PromptBacklogDomain()
+		if err != nil {
+			fmt.Println("❌ Lỗi khi chọn domain:", err)
+			os.Exit(1)
+		}
+		_ = tokenMgr.SaveBacklogDomain(domain)
+	}
+
 	// Step 2: Initialize Platform Client
 	fmt.Println("\nStep 2: Khởi Tạo Client")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
@@ -115,11 +134,12 @@ func main() {
 	case "bitbucket":
 		platformClient, err = bitbucket.NewClient(username, token)
 	case "backlog":
-		platformClient, err = backlog.NewClient(spaceID, token)
+		platformClient, err = backlog.NewClient(spaceID, token, domain)
 	default:
 		fmt.Printf("❌ Platform không được hỗ trợ: %s\n", selectedPlatform)
 		os.Exit(1)
 	}
+
 
 	if err != nil {
 		fmt.Println("❌ Lỗi khi khởi tạo client:", err)
