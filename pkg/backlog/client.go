@@ -39,7 +39,6 @@ func NewClient(spaceID, apiKey, domain string) (*Client, error) {
 	}, nil
 }
 
-
 // doRequest performs an HTTP request with API key authentication
 func (c *Client) doRequest(ctx context.Context, method, path string, params url.Values) ([]byte, error) {
 	if params == nil {
@@ -48,7 +47,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 	params.Set("apiKey", c.apiKey)
 
 	urlPath := fmt.Sprintf("%s%s?%s", c.baseURL, path, params.Encode())
-	
+
 	req, err := http.NewRequestWithContext(ctx, method, urlPath, nil)
 	if err != nil {
 		return nil, err
@@ -73,7 +72,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 // VerifyToken verifies API key validity
 func (c *Client) VerifyToken(ctx context.Context) error {
 	fmt.Printf("🔗 Connecting to: %s\n", c.baseURL)
-	
+
 	body, err := c.doRequest(ctx, "GET", "/space", nil)
 	if err != nil {
 		return err
@@ -91,7 +90,6 @@ func (c *Client) VerifyToken(ctx context.Context) error {
 	fmt.Printf("👤 Đăng nhập thành công với space: %s (%s)\n", space.SpaceKey, space.Name)
 	return nil
 }
-
 
 // GetCurrentUserRepositories retrieves Git repositories from all projects
 func (c *Client) GetCurrentUserRepositories(ctx context.Context) ([]*platform.RepositoryInfo, error) {

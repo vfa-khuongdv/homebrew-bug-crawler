@@ -50,9 +50,10 @@ func main() {
 		token = savedToken
 
 		// Get additional credentials if needed
-		if selectedPlatform == "bitbucket" {
+		switch selectedPlatform {
+		case "bitbucket":
 			email, _ = tokenMgr.GetBitbucketEmail()
-		} else if selectedPlatform == "backlog" {
+		case "backlog":
 			spaceID, _ = tokenMgr.GetBacklogSpaceID()
 			domain, _ = tokenMgr.GetBacklogDomain()
 		}
@@ -353,7 +354,7 @@ func main() {
 			results := prRuleAnalyzer.AnalyzePRRules(job.PRData)
 			allPRRuleResults = append(allPRRuleResults, results...)
 		} else {
-			results := bugAnalyzer.AnalyzePRs(job.PRData, bugType)
+			results := bugAnalyzer.AnalyzePRs(job.PRData, bugType, selectedPlatform)
 			allResults = append(allResults, results...)
 		}
 	}

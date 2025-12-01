@@ -114,7 +114,7 @@ func TestAnalyzePR_BugReview(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := analyzer.AnalyzePR(tt.pr, "bug_review")
+			result := analyzer.AnalyzePR(tt.pr, "bug_review", "github")
 
 			if result.IsBugRelated != tt.wantBug {
 				t.Errorf("IsBugRelated = %v, want %v", result.IsBugRelated, tt.wantBug)
@@ -264,7 +264,7 @@ func TestAnalyzePR_Labels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := analyzer.AnalyzePR(tt.pr, "label") // Use "label" or default
+			result := analyzer.AnalyzePR(tt.pr, "label", "github") // Use "label" or default
 
 			if result.IsBugRelated != tt.wantBug {
 				t.Errorf("IsBugRelated = %v, want %v", result.IsBugRelated, tt.wantBug)
@@ -289,7 +289,7 @@ func TestAnalyzePR_ExclusiveModes(t *testing.T) {
 	}
 
 	t.Run("bug_review mode ignores labels", func(t *testing.T) {
-		result := analyzer.AnalyzePR(pr, "bug_review")
+		result := analyzer.AnalyzePR(pr, "bug_review", "github")
 		if !result.IsBugRelated {
 			t.Error("Should be detected as bug related")
 		}
@@ -302,7 +302,7 @@ func TestAnalyzePR_ExclusiveModes(t *testing.T) {
 	})
 
 	t.Run("label mode ignores bug_review", func(t *testing.T) {
-		result := analyzer.AnalyzePR(pr, "label")
+		result := analyzer.AnalyzePR(pr, "label", "github")
 		if !result.IsBugRelated {
 			t.Error("Should be detected as bug related")
 		}
@@ -313,6 +313,108 @@ func TestAnalyzePR_ExclusiveModes(t *testing.T) {
 			t.Errorf("Expected bug count 0 in label mode, got %d", result.BugCount)
 		}
 	})
+}
+
+func TestAnalyzePR_BitbucketBacklog(t *testing.T) {
+	analyzer := NewBugAnalyzer()
+
+	tests := []struct {
+		name        string
+		pr          *platform.PullRequestData
+		platform    string
+		wantBug     bool
+		wantType    string
+		wantKeyword string
+	}{
+		{
+			name: "Bitbucket: type: bug in description",
+			pr: &platform.PullRequestData{
+				Title:       "Fix something",
+				Description: "This is a fix. type: bug",
+				Labels:      []string{},
+			},
+			platform:    "bitbucket",
+			wantBug:     true,
+			wantType:    "description_regex",
+			wantKeyword: "type: bug",
+		},
+		{
+			name: "Backlog: type: bug in description",
+			pr: &platform.PullRequestData{
+				Title:       "Fix something",
+				Description: "This is a fix. type: bug",
+				Labels:      []string{},
+			},
+			platform:    "backlog",
+			wantBug:     true,
+			wantType:    "description_regex",
+			wantKeyword: "type: bug",
+		},
+		{
+			name: "Bitbucket: type:bug (no space)",
+			pr: &platform.PullRequestData{
+				Title:       "Fix something",
+				Description: "type:bug",
+				Labels:      []string{},
+			},
+			platform:    "bitbucket",
+			wantBug:     true,
+			wantType:    "description_regex",
+			wantKeyword: "type: bug",
+		},
+		{
+			name: "Bitbucket: TYPE: BUG (case insensitive)",
+			pr: &platform.PullRequestData{
+				Title:       "Fix something",
+				Description: "TYPE: BUG",
+				Labels:      []string{},
+			},
+			platform:    "bitbucket",
+			wantBug:     true,
+			wantType:    "description_regex",
+			wantKeyword: "type: bug",
+		},
+		{
+			name: "GitHub: type: bug in description (should be ignored)",
+			pr: &platform.PullRequestData{
+				Title:       "Fix something",
+				Description: "type: bug",
+				Labels:      []string{},
+			},
+			platform:    "github",
+			wantBug:     false,
+			wantType:    "",
+			wantKeyword: "",
+		},
+		{
+			name: "Bitbucket: no type: bug",
+			pr: &platform.PullRequestData{
+				Title:       "Feature",
+				Description: "New feature",
+				Labels:      []string{},
+			},
+			platform:    "bitbucket",
+			wantBug:     false,
+			wantType:    "",
+			wantKeyword: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := analyzer.AnalyzePR(tt.pr, "bug", tt.platform)
+
+			if result.IsBugRelated != tt.wantBug {
+				t.Errorf("IsBugRelated = %v, want %v", result.IsBugRelated, tt.wantBug)
+			}
+			if result.DetectionType != tt.wantType {
+				t.Errorf("DetectionType = %v, want %v", result.DetectionType, tt.wantType)
+			}
+			if tt.wantBug && result.MatchedKeyword != tt.wantKeyword {
+				t.Errorf("MatchedKeyword = %v, want %v", result.MatchedKeyword, tt.wantKeyword)
+			}
+		})
+	}
 }
 
 func TestAnalyzePR_NotBugRelated(t *testing.T) {
@@ -374,7 +476,7 @@ func TestAnalyzePR_NotBugRelated(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := analyzer.AnalyzePR(tt.pr, "label")
+			result := analyzer.AnalyzePR(tt.pr, "label", "github")
 
 			if result.IsBugRelated {
 				t.Errorf("Expected IsBugRelated to be false, got true with type=%s, keyword=%s",
@@ -411,7 +513,7 @@ func TestAnalyzePRs_BugReviewMode(t *testing.T) {
 		},
 	}
 
-	results := analyzer.AnalyzePRs(prs, "bug_review")
+	results := analyzer.AnalyzePRs(prs, "bug_review", "github")
 
 	if len(results) != 3 {
 		t.Errorf("Expected 3 results, got %d", len(results))
@@ -452,7 +554,7 @@ func TestAnalyzePRs_LabelMode(t *testing.T) {
 		},
 	}
 
-	results := analyzer.AnalyzePRs(prs, "label")
+	results := analyzer.AnalyzePRs(prs, "label", "github")
 
 	if len(results) != 3 {
 		t.Errorf("Expected 3 results, got %d", len(results))
@@ -475,7 +577,7 @@ func TestAnalyzePRs_LabelMode(t *testing.T) {
 func TestAnalyzePRs_EmptyList(t *testing.T) {
 	analyzer := NewBugAnalyzer()
 
-	results := analyzer.AnalyzePRs([]*platform.PullRequestData{}, "label")
+	results := analyzer.AnalyzePRs([]*platform.PullRequestData{}, "label", "github")
 
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results, got %d", len(results))
@@ -485,7 +587,7 @@ func TestAnalyzePRs_EmptyList(t *testing.T) {
 func TestAnalyzePRs_NilList(t *testing.T) {
 	analyzer := NewBugAnalyzer()
 
-	results := analyzer.AnalyzePRs(nil, "label")
+	results := analyzer.AnalyzePRs(nil, "label", "github")
 
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results, got %d", len(results))

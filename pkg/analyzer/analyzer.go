@@ -56,7 +56,7 @@ func NewBugAnalyzer() *BugAnalyzer {
 }
 
 // AnalyzePR analyzes a PR to detect bug
-func (ba *BugAnalyzer) AnalyzePR(pr *platform.PullRequestData, bugType string) *BugResult {
+func (ba *BugAnalyzer) AnalyzePR(pr *platform.PullRequestData, bugType string, platformType string) *BugResult {
 	result := &BugResult{
 		PR:            pr,
 		IsBugRelated:  false,
@@ -78,6 +78,18 @@ func (ba *BugAnalyzer) AnalyzePR(pr *platform.PullRequestData, bugType string) *
 		}
 		return result
 	default:
+		// For Bitbucket and Backlog, check description for "type: bug"
+		if platformType == "bitbucket" || platformType == "backlog" {
+			// Regex: type:\s*bug (case insensitive)
+			re := regexp.MustCompile(`(?i)type:\s*bug`)
+			if re.MatchString(pr.Description) {
+				result.IsBugRelated = true
+				result.DetectionType = "description_regex"
+				result.MatchedKeyword = "type: bug"
+				return result
+			}
+		}
+
 		// Check labels: bug, fix, hotfix, critical, error, issue
 		for _, label := range pr.Labels {
 			if ba.bugLabelRegex.MatchString(label) {
@@ -115,10 +127,10 @@ func (ba *BugAnalyzer) extractBugReviewCount(desc string) (int, bool) {
 }
 
 // AnalyzePRs analyzes a list of PRs
-func (ba *BugAnalyzer) AnalyzePRs(prs []*platform.PullRequestData, bugType string) []*BugResult {
+func (ba *BugAnalyzer) AnalyzePRs(prs []*platform.PullRequestData, bugType string, platformType string) []*BugResult {
 	results := make([]*BugResult, 0)
 	for _, pr := range prs {
-		result := ba.AnalyzePR(pr, bugType)
+		result := ba.AnalyzePR(pr, bugType, platformType)
 		results = append(results, result)
 	}
 	return results
