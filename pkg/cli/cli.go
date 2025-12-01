@@ -17,10 +17,13 @@ func NewCLI() *CLI {
 	return &CLI{}
 }
 
-// PromptToken prompts user to enter GitHub token
-func (c *CLI) PromptToken() (string, error) {
+// PromptToken prompts user to enter token with custom label
+func (c *CLI) PromptToken(label string) (string, error) {
+	if label == "" {
+		label = "Token"
+	}
 	prompt := promptui.Prompt{
-		Label: "GitHub Token",
+		Label: label,
 		Mask:  '*',
 	}
 
@@ -526,7 +529,7 @@ func (c *CLI) PromptBacklogApiKey() (string, error) {
 	fmt.Println("\n⚠️  LƯU Ý QUAN TRỌNG:")
 	fmt.Println("Vui lòng sử dụng 'API Key' (từ Personal Settings -> API), KHÔNG PHẢI 'Git Password'.")
 	fmt.Println("Link: https://[your-space].backlog.com/EditApiSettings.action")
-	
+
 	prompt := promptui.Prompt{
 		Label: "Backlog API Key",
 		Mask:  '*',
@@ -555,10 +558,10 @@ func (c *CLI) PromptBacklogDomain() (string, error) {
 	return result, nil
 }
 
-// PromptBitbucketUsername prompts for Bitbucket username
-func (c *CLI) PromptBitbucketUsername() (string, error) {
+// PromptBitbucketEmail prompts for Bitbucket email (Atlassian account email)
+func (c *CLI) PromptBitbucketEmail() (string, error) {
 	prompt := promptui.Prompt{
-		Label: "Bitbucket Username",
+		Label: "Bitbucket Email (Atlassian account email)",
 	}
 
 	result, err := prompt.Run()

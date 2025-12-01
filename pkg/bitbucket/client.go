@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,21 +19,21 @@ const (
 
 // Client wraps Bitbucket API client
 type Client struct {
-	httpClient  *http.Client
-	username    string
-	appPassword string
+	httpClient *http.Client
+	email      string
+	apiToken   string
 }
 
 // NewClient initializes Bitbucket client
-func NewClient(username, appPassword string) (*Client, error) {
-	if username == "" || appPassword == "" {
-		return nil, fmt.Errorf("username and app password are required")
+func NewClient(email, apiToken string) (*Client, error) {
+	if email == "" || apiToken == "" {
+		return nil, fmt.Errorf("atlassian account email and API token are required")
 	}
 
 	return &Client{
-		httpClient:  &http.Client{Timeout: 30 * time.Second},
-		username:    username,
-		appPassword: appPassword,
+		httpClient: &http.Client{Timeout: 30 * time.Second},
+		email:      email,
+		apiToken:   apiToken,
 	}, nil
 }
 
@@ -43,8 +44,8 @@ func (c *Client) doRequest(ctx context.Context, method, urlPath string) ([]byte,
 		return nil, err
 	}
 
-	// Basic authentication
-	req.SetBasicAuth(c.username, c.appPassword)
+	// Basic authentication with Atlassian account email
+	req.SetBasicAuth(c.email, c.apiToken)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
@@ -55,6 +56,9 @@ func (c *Client) doRequest(ctx context.Context, method, urlPath string) ([]byte,
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized {
+			return nil, fmt.Errorf("bitbucket API error: 401 unauthorized - kiểm tra lại atlassian account email (%s) và API token. API token cần được tạo tại https://id.atlassian.com/manage-profile/security/api-tokens", c.email)
+		}
 		return nil, fmt.Errorf("bitbucket API error: %d - %s", resp.StatusCode, string(body))
 	}
 
@@ -66,6 +70,10 @@ func (c *Client) VerifyToken(ctx context.Context) error {
 	urlPath := fmt.Sprintf("%s/user", bitbucketAPIURL)
 	body, err := c.doRequest(ctx, "GET", urlPath)
 	if err != nil {
+		// Provide helpful message if verification fails
+		if strings.Contains(err.Error(), "401") {
+			return fmt.Errorf("authentication failed - verify your API token has these scopes: User (Read), Workspace (Read), Repository (Read), Pull Request (Read). Token may also be expired or revoked. See: https://id.atlassian.com/manage-profile/security/api-tokens")
+		}
 		return err
 	}
 
@@ -85,45 +93,28 @@ func (c *Client) VerifyToken(ctx context.Context) error {
 // GetCurrentUserRepositories retrieves current user repositories
 func (c *Client) GetCurrentUserRepositories(ctx context.Context) ([]*platform.RepositoryInfo, error) {
 	var repos []*platform.RepositoryInfo
-	urlPath := fmt.Sprintf("%s/repositories/%s", bitbucketAPIURL, c.username)
 
-	for urlPath != "" {
-		body, err := c.doRequest(ctx, "GET", urlPath)
+	// Get user's workspaces first
+	workspaces, err := c.GetCurrentUserOrganizations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user workspaces: %w", err)
+	}
+
+	if len(workspaces) == 0 {
+		fmt.Println("⚠️  No workspaces found for current user")
+		return repos, nil
+	}
+
+	fmt.Printf("📦 Found %d workspace(s), scanning for repositories...\n", len(workspaces))
+
+	// For each workspace, get the repositories
+	for _, workspace := range workspaces {
+		workspaceRepos, err := c.GetOrganizationRepositories(ctx, workspace)
 		if err != nil {
-			return nil, err
+			fmt.Printf("⚠️  Failed to get repositories from workspace '%s': %v\n", workspace, err)
+			continue
 		}
-
-		var response struct {
-			Values []struct {
-				FullName string `json:"full_name"`
-				Name     string `json:"name"`
-				Owner    struct {
-					Username string `json:"username"`
-				} `json:"owner"`
-				Links struct {
-					HTML struct {
-						Href string `json:"href"`
-					} `json:"html"`
-				} `json:"links"`
-			} `json:"values"`
-			Next string `json:"next"`
-		}
-
-		if err := json.Unmarshal(body, &response); err != nil {
-			return nil, err
-		}
-
-		for _, repo := range response.Values {
-			repoInfo := &platform.RepositoryInfo{
-				FullName: repo.FullName,
-				Owner:    repo.Owner.Username,
-				Name:     repo.Name,
-				URL:      repo.Links.HTML.Href,
-			}
-			repos = append(repos, repoInfo)
-		}
-
-		urlPath = response.Next
+		repos = append(repos, workspaceRepos...)
 	}
 
 	return repos, nil

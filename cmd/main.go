@@ -41,7 +41,7 @@ func main() {
 	fmt.Println("\nStep 1: Xác Thực")
 	fmt.Println("-" + strings.Repeat("-", 40) + "-")
 
-	var token, username, spaceID, domain string
+	var token, email, spaceID, domain string
 
 	// Try to get saved token
 	savedToken, err := tokenMgr.GetTokenForPlatform(selectedPlatform)
@@ -51,7 +51,7 @@ func main() {
 
 		// Get additional credentials if needed
 		if selectedPlatform == "bitbucket" {
-			username, _ = tokenMgr.GetBitbucketUsername()
+			email, _ = tokenMgr.GetBitbucketEmail()
 		} else if selectedPlatform == "backlog" {
 			spaceID, _ = tokenMgr.GetBacklogSpaceID()
 			domain, _ = tokenMgr.GetBacklogDomain()
@@ -65,22 +65,24 @@ func main() {
 		case "github":
 			promptLabel = "GitHub Personal Access Token"
 		case "bitbucket":
-			promptLabel = "Bitbucket App Password"
+			promptLabel = "Bitbucket API Token"
+			fmt.Println("\n📝 Tạo API Token tại: https://bitbucket.org/account/settings/personal/api-tokens/")
+			fmt.Println("   Chọn scopes: User (Read), Workspace (Read), Repository (Read), Pull Request (Read)")
 		case "backlog":
 			promptLabel = "Backlog API Key"
 		}
 
 		fmt.Printf("\nNhập %s:\n", promptLabel)
-		
+
 		var inputToken string
 		var err error
-		
+
 		if selectedPlatform == "backlog" {
 			inputToken, err = cliTool.PromptBacklogApiKey()
 		} else {
-			inputToken, err = cliTool.PromptToken()
+			inputToken, err = cliTool.PromptToken(promptLabel)
 		}
-		
+
 		if err != nil {
 			fmt.Println("❌ Lỗi khi nhập token:", err)
 			os.Exit(1)
@@ -98,13 +100,13 @@ func main() {
 	}
 
 	// Get platform-specific additional credentials
-	if selectedPlatform == "bitbucket" && username == "" {
-		username, err = cliTool.PromptBitbucketUsername()
+	if selectedPlatform == "bitbucket" && email == "" {
+		email, err = cliTool.PromptBitbucketEmail()
 		if err != nil {
-			fmt.Println("❌ Lỗi khi nhập username:", err)
+			fmt.Println("❌ Lỗi khi nhập email:", err)
 			os.Exit(1)
 		}
-		_ = tokenMgr.SaveBitbucketUsername(username)
+		_ = tokenMgr.SaveBitbucketEmail(email)
 	} else if selectedPlatform == "backlog" && spaceID == "" {
 		spaceID, err = cliTool.PromptBacklogSpaceID()
 		if err != nil {
@@ -132,14 +134,13 @@ func main() {
 	case "github":
 		platformClient, err = github.NewClient(token)
 	case "bitbucket":
-		platformClient, err = bitbucket.NewClient(username, token)
+		platformClient, err = bitbucket.NewClient(email, token)
 	case "backlog":
 		platformClient, err = backlog.NewClient(spaceID, token, domain)
 	default:
 		fmt.Printf("❌ Platform không được hỗ trợ: %s\n", selectedPlatform)
 		os.Exit(1)
 	}
-
 
 	if err != nil {
 		fmt.Println("❌ Lỗi khi khởi tạo client:", err)
