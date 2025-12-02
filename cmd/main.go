@@ -422,7 +422,6 @@ func printHeader() {
  ███████║██║     ███████╗
  ╚══════╝╚═╝     ╚══════╝`
 	fmt.Println(logo)
-	fmt.Println("🐛 Bug Crawler - Multi-Platform PR Bug Analysis Tool")
-	fmt.Println("👤 Author: khuongdv@vitalify.asia")
+	fmt.Println("🐛 SPL Bug Crawler")
 	fmt.Println("==========================================")
 }
