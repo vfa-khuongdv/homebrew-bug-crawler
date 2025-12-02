@@ -1,23 +1,23 @@
 class BugCrawler < Formula
   desc "GitHub PR Bug Analysis Tool - analyze and count bugs from pull requests"
   homepage "https://github.com/vfa-khuongdv/bug-crawler"
-  version "1.0.5"
+  version "1.0.6"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.5/bug-crawler-darwin-arm64"
-      sha256 "71836ad540d94fd7102c2b555b1ab94544f04c130d09abd81ce1228425779b45"
+      url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.6/bug-crawler-darwin-arm64"
+      sha256 "c30b5d1eedfd8b433e720cbe18fe99c57cacc5f14898689e0a48ac72b3c0331a"
     end
     if Hardware::CPU.intel?
-      url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.5/bug-crawler-darwin-amd64"
-      sha256 "2422a11eaebcccd03477551b34f10bf48a4292d22a59fd849a597357eedfbf02"
+      url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.6/bug-crawler-darwin-amd64"
+      sha256 "6c5ddf4e5dee0c70eba7334bb9f9d5603bd14fbf6ec39dcc2de08d10478e63af"
     end
   end
 
   on_linux do
-    url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.5/bug-crawler-linux-amd64"
-    sha256 "2b94185d6fd37d89f379c2d4ca982303bb68fbf7b702d079ead645884931a73d"
+    url "https://github.com/vfa-khuongdv/homebrew-bug-crawler/releases/download/v1.0.6/bug-crawler-linux-amd64"
+    sha256 "8c00bee2475952b7829321580307509d60633232d28b060cda8c77358c4472f3"
   end
 
   def install
