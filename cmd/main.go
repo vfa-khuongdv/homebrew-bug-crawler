@@ -387,7 +387,7 @@ func main() {
 			}
 		case "bug":
 			for _, result := range allResults {
-				if result.DetectionType == "label" {
+				if result.DetectionType == "label" || result.DetectionType == "description_regex" {
 					filteredResults = append(filteredResults, result)
 				}
 			}

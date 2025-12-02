@@ -127,6 +127,21 @@ Hệ thống sẽ tìm các label có chứa các từ khóa sau (không phân b
 - 🔢 `BugCount`: `0` (vì không có thông tin cụ thể)
 - 🏷️ `MatchedKeyword`: Tên label được tìm thấy (ví dụ: `"bug"`, `"hotfix"`)
 
+### 3. Chế Độ Scan cho Bitbucket và Backlog
+
+Đối với **Bitbucket** và **Backlog**, ngoài việc scan theo label (nếu platform hỗ trợ), tool còn hỗ trợ tìm kiếm từ khóa trong **PR Description**.
+
+**Cú pháp:**
+```
+type: bug
+```
+(Không phân biệt chữ hoa/thường, có thể có khoảng trắng sau dấu hai chấm)
+
+Nếu tìm thấy cụm từ này trong mô tả PR, tool sẽ ghi nhận:
+- ✅ `IsBugRelated`: `true`
+- 📊 `DetectionType`: `"description_regex"`
+- 🏷️ `MatchedKeyword`: `"type: bug"`
+
 ---
 
 ## 📝 Chế Độ Code Review Compliance - Kiểm Tra Quy Trình Review

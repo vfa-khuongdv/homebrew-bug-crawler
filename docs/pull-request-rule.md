@@ -400,7 +400,7 @@ Nếu bạn có thắc mắc về kết quả scan hoặc cần hỗ trợ:
 ### Sau Khi Tool Scan
 - [ ] Mở file CSV report
 - [ ] Kiểm tra cột `pr_compliant` để xem PR nào chưa đạt chuẩn
-- [ ] Xem lý do cụ thể qua các cột `pr_description_valid`, `is_approved`, `review_comment_valid`
+- [ ] Xem lý do cụ thể qua các cột `pr_description_valid`, `review_comment_valid`
 - [ ] Cập nhật PR/review comment nếu cần thiết
 
 ---

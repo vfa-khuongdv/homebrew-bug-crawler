@@ -1,16 +1,17 @@
-# 🐛 Bug Crawler - GitHub PR Bug Analysis Tool
+# 🐛 Bug Crawler - Multi-Platform PR Bug Analysis Tool
 
-> Công cụ tự động phân tích và thống kê bug từ Pull Request trên GitHub
+> Công cụ tự động phân tích và thống kê bug từ Pull Request trên GitHub, Bitbucket và Backlog
 
-Ứng dụng terminal Go để phân tích tự động các Pull Request trên GitHub, phát hiện bug dựa trên keywords và labels, rồi xuất kết quả dạng CSV cho báo cáo.
+Ứng dụng terminal Go để phân tích tự động các Pull Request trên các nền tảng Git, phát hiện bug dựa trên keywords và labels, rồi xuất kết quả dạng CSV cho báo cáo.
 
 ## ✨ Tính Năng Chính
 
-- 🔐 **Quản lý token an toàn** - Lưu GitHub token vào file config được mã hóa
-- 📦 **2 chế độ quét repositories**:
-  - Repositories của tài khoản của bạn (User)
-  - Repositories của Organizations (chọn múi organization)
-- 🎯 **Tự động xử lý** - Sử dụng tất cả repositories tìm được (không cần chọn lại)
+- 🔐 **Quản lý token an toàn** - Lưu token vào file config được mã hóa
+- 📦 **Hỗ trợ đa nền tảng**:
+  - GitHub
+  - Bitbucket
+  - Backlog
+- 🎯 **Tự động xử lý** - Sử dụng tất cả repositories tìm được
 - 📅 **Lọc theo thời gian** - Phân tích PR trong khoảng thời gian tùy chọn
 - 🔍 **2 phương pháp phát hiện bug thông minh**:
   - Label-based: Phát hiện từ PR labels (`bug`, `fix`, `hotfix`, `critical`, `error`, `issue`)
@@ -20,7 +21,7 @@
 
 ## 🚀 Giới Thiệu Nhanh
 
-**Bug Crawler** giúp team **giảm 80% thời gian scan bug sau mỗi sprint**. Chỉ cần nhập GitHub token, chọn repositories, tool sẽ tự động:
+**Bug Crawler** giúp team **giảm 80% thời gian scan bug sau mỗi sprint**. Chỉ cần nhập token, chọn repositories, tool sẽ tự động:
 - Phát hiện tất cả PR liên quan bug
 - Thống kê chi tiết theo keywords/labels
 - Xuất báo cáo CSV sẵn sàng gửi BPM
@@ -35,7 +36,7 @@ bug-crawler
 
 ### Yêu Cầu
 - **Go 1.23+** (nếu build từ source)
-- **GitHub Personal Access Token** (tạo tại https://github.com/settings/tokens)
+- **Personal Access Token** cho platform tương ứng
 
 ### Cách 1: Cài đặt qua Homebrew ⭐ (Khuyên dùng)
 
@@ -98,14 +99,13 @@ bug-crawler
 
 ### 🔄 Luồng Sử Dụng Chi Tiết (7 Bước)
 
-#### **Bước 1: GitHub Token**
-- Nhập token GitHub của bạn
-- Hoặc sử dụng token đã lưu từ lần trước
-- Tùy chọn lưu token vào `~/.config/bug-crawler/token` cho lần tiếp theo
+#### **Bước 1: Chọn Platform**
+- Chọn platform bạn muốn scan: GitHub, Bitbucket, hoặc Backlog
 
 #### **Bước 2: Xác Thực**
-- Ứng dụng tự động xác thực token với GitHub API
-- Hiển thị tên tài khoản GitHub đã đăng nhập
+- Nhập token/API key tương ứng
+- Ứng dụng tự động xác thực với API của platform
+- Hiển thị thông tin tài khoản đã đăng nhập
 
 #### **Bước 3: Chọn Scan Source**
 Bạn có 2 lựa chọn:
