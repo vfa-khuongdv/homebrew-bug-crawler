@@ -18,8 +18,7 @@ import (
 )
 
 func main() {
-	fmt.Println("🐛 Bug Crawler - Multi-Platform PR Bug Analysis Tool")
-	fmt.Println("==========================================")
+	printHeader()
 
 	// Initialize managers
 	tokenMgr := auth.NewTokenManager()
@@ -412,4 +411,18 @@ func main() {
 	}
 
 	fmt.Println("\n✓ Hoàn thành!")
+}
+
+func printHeader() {
+	logo := `
+ ███████╗██████╗ ██╗
+ ██╔════╝██╔══██╗██║
+ ███████╗██████╔╝██║
+ ╚════██║██╔═══╝ ██║
+ ███████║██║     ███████╗
+ ╚══════╝╚═╝     ╚══════╝`
+	fmt.Println(logo)
+	fmt.Println("🐛 Bug Crawler - Multi-Platform PR Bug Analysis Tool")
+	fmt.Println("👤 Author: khuongdv@vitalify.asia")
+	fmt.Println("==========================================")
 }
